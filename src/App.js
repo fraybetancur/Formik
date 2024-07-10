@@ -18,9 +18,6 @@ const App = () => {
 
   return (
     <div className="app">
-      <button className="menu-btn" onClick={handleMenuToggle}>
-        ☰
-      </button>
       <SideMenu 
         isOpen={isMenuOpen} 
         onClose={handleMenuToggle} 
@@ -28,10 +25,15 @@ const App = () => {
       />
       {currentPage === 'page1' ? (
         <div>
-          <h4>
-            Building input primitives with{' '}
-            <a href="https://github.com/jaredpalmer/formik">Formik</a>
-          </h4>
+          <div className="header-container">
+            <button className="menu-btn1" onClick={handleMenuToggle}>
+              ☰
+            </button>
+            <h1>
+              Building input primitives with{' '}
+              <a href="https://github.com/jaredpalmer/formik">Formik</a>
+            </h1>
+          </div>
           <p>
             Formik enables you to quickly build and style your own reusable form-related
             components extremely quickly.

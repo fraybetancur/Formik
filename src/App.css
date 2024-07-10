@@ -1,32 +1,11 @@
-.app {
-  margin: 2rem;
-  padding-left: 2rem;
-}
-
-@media (max-width: 768px) {
-  .app {
-    margin: 1rem;
-    padding-left: 1rem;
-  }
-
-  .text-input {
-    font-size: 14px;
-  }
-
-  button {
-    width: 100%;
-    max-width: none;
-    margin: 10px 0;
-  }
-}
-
+/* Nuevos estilos para el contenedor del encabezado */
 .header-container {
   display: flex;
   align-items: center;
+  gap: 1rem;
 }
 
 .menu-btn {
-  margin-right: 1rem;
   background: none;
   border: none;
   font-size: 2rem;
@@ -35,4 +14,10 @@
 
 .menu-btn:focus {
   outline: none;
+}
+
+h1 {
+  margin: 0; /* Asegurar que no haya margen adicional en el encabezado */
+  display: flex;
+  align-items: center;
 }
