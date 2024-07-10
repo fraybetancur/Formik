@@ -1,0 +1,43 @@
+.side-menu {
+    position: fixed;
+    top: 0;
+    left: -250px;
+    width: 250px;
+    height: 100%;
+    background: #111;
+    color: white;
+    transition: left 0.3s ease;
+    padding: 1rem;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+  }
+  
+  .side-menu.open {
+    left: 0;
+  }
+  
+  .side-menu .close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    margin-bottom: 1rem;
+  }
+  
+  .side-menu nav button {
+    display: block;
+    width: 100%;
+    padding: 1rem;
+    background: none;
+    border: none;
+    color: white;
+    text-align: left;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-bottom: 0.5rem;
+  }
+  
+  .side-menu nav button:hover {
+    background: #575757;
+  }
+  

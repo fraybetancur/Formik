@@ -1,0 +1,38 @@
+.app {
+  margin: 2rem;
+  padding-left: 2rem;
+}
+
+@media (max-width: 768px) {
+  .app {
+    margin: 1rem;
+    padding-left: 1rem;
+  }
+
+  .text-input {
+    font-size: 14px;
+  }
+
+  button {
+    width: 100%;
+    max-width: none;
+    margin: 10px 0;
+  }
+}
+
+.header-container {
+  display: flex;
+  align-items: center;
+}
+
+.menu-btn {
+  margin-right: 1rem;
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+}
+
+.menu-btn:focus {
+  outline: none;
+}
