@@ -1,22 +1,68 @@
-import React from 'react';
-import './Header.css';
+/** @jsxImportSource @emotion/react */
+import { css } from '@emotion/react';
+import styled from '@emotion/styled';
+
+const headerStyle = css`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.1rem;
+  background-color: #08c;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+`;
+
+const Left = styled.div`
+  display: flex;
+  align-items: center;
+`;
+
+const Center = styled.div`
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  justify-content: center;
+  color: white;
+`;
+
+const Right = styled.div`
+  display: flex;
+  align-items: center;
+`;
+
+const buttonStyle = css`
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  box-shadow: none;
+  margin: 0px 0;
+  
+  &:focus {
+    outline: none;
+  }
+`;
 
 const Header = ({ onMenuToggle, onRightButtonClick, headerText }) => {
   return (
-    <header className="header">
-      <div className="left">
-        <button className="menu-btn" onClick={onMenuToggle}>
+    <header css={headerStyle}>
+      <Left>
+        <button css={buttonStyle} onClick={onMenuToggle}>
           ☰
         </button>
-      </div>
-      <div className="center">
+      </Left>
+      <Center>
         <h1>{headerText}</h1>
-      </div>
-      <div className="right">
-        <button className="right-btn" onClick={onRightButtonClick}>
+      </Center>
+      <Right>
+        <button css={buttonStyle} onClick={onRightButtonClick}>
           ⚙️
         </button>
-      </div>
+      </Right>
     </header>
   );
 };
