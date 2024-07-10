@@ -1,23 +1,28 @@
-/* Nuevos estilos para el contenedor del encabezado */
-.header-container {
+.app {
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  flex-direction: column;
+  min-height: 100vh;
+  padding-top: 4rem; /* Ajusta este valor según la altura del header */
+  padding-bottom: 4rem; /* Ajusta este valor según la altura del footer */
 }
 
-.menu-btn {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  cursor: pointer;
+.main-content {
+  flex: 1;
+  padding: 1rem;
 }
 
-.menu-btn:focus {
-  outline: none;
-}
+@media (max-width: 768px) {
+  .main-content {
+    padding: 1rem;
+  }
 
-h1 {
-  margin: 0; /* Asegurar que no haya margen adicional en el encabezado */
-  display: flex;
-  align-items: center;
+  .text-input {
+    font-size: 14px;
+  }
+
+  button {
+    width: 100%;
+    max-width: none;
+    margin: 10px 0;
+  }
 }

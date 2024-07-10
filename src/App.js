@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import MyEnhancedForm from './formik-demo';
 import SideMenu from './SideMenu';
+import Header from './Header';
+import Footer from './Footer';
 import './App.css';
 
 const App = () => {
@@ -16,41 +18,47 @@ const App = () => {
     setIsMenuOpen(false);
   };
 
+  const handleRightButtonClick = () => {
+    alert('Right button clicked!');
+  };
+
+  const getHeaderText = () => {
+    return 'My Application';
+  };
+
   return (
     <div className="app">
+      <Header 
+        onMenuToggle={handleMenuToggle} 
+        onRightButtonClick={handleRightButtonClick} 
+        headerText={getHeaderText()} 
+      />
       <SideMenu 
         isOpen={isMenuOpen} 
         onClose={handleMenuToggle} 
         onNavigate={handleNavigate} 
       />
-      {currentPage === 'page1' ? (
-        <div>
-          <div className="header-container">
-            <button className="menu-btn1" onClick={handleMenuToggle}>
-              ☰
-            </button>
-            <h1>
+      <main className="main-content">
+        {currentPage === 'page1' ? (
+          <div>
+            <h3>
               Building input primitives with{' '}
               <a href="https://github.com/jaredpalmer/formik">Formik</a>
-            </h1>
+            </h3>
+            <p>
+              Formik enables you to quickly build and style your own reusable form-related
+              components extremely quickly.
+            </p>
+            <MyEnhancedForm user={{ email: '', firstName: '', lastName: '' }} />
           </div>
-          <p>
-            Formik enables you to quickly build and style your own reusable form-related
-            components extremely quickly.
-          </p>
-          <p>
-            This example does just that. It demonstrates a custom text input, label, and form
-            feedback components as well as a cool shake animation that's triggered if a field is
-            invalid.
-          </p>
-          <MyEnhancedForm user={{ email: '', firstName: '', lastName: '' }} />
-        </div>
-      ) : (
-        <div>
-          <h1>Bienvenido a Página 2</h1>
-          <p>El formulario está oculto en esta página.</p>
-        </div>
-      )}
+        ) : (
+          <div>
+            <h1>Bienvenido a Página 2</h1>
+            <p>El formulario está oculto en esta página.</p>
+          </div>
+        )}
+      </main>
+      <Footer />
     </div>
   );
 };

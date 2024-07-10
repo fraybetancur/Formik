@@ -1,0 +1,45 @@
+.header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.1rem;
+    background-color: #08c;
+    ;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+  }
+  
+  .left, .center, .right {
+    display: flex;
+    align-items: center;
+  }
+  
+  .menu-btn, .right-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    box-shadow: none;
+    margin: 0px 0;
+  }
+  
+  .menu-btn:focus, .right-btn:focus {
+    outline: none;
+  }
+  
+  .center {
+    flex-grow: 1;
+    justify-content: center;
+    color: white;
+  }
+  
+  .center h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    text-align: center;
+  }
+  
