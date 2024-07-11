@@ -5,6 +5,8 @@ import MyEnhancedForm from './formik-demo';
 import SideMenu from './SideMenu';
 import Header from './Header';
 import Footer from './Footer';
+import ExcelUploader from './ExcelUploader';
+import SurveyApp from './SurveyApp';
 
 const globalStyles = css`
   * {
@@ -95,6 +97,7 @@ const App = () => {
             <div>
               <h1>Bienvenido a Página 2</h1>
               <p>El formulario está oculto en esta página.</p>
+              <SurveyApp></SurveyApp>
             </div>
           )}
         </main>
@@ -103,5 +106,7 @@ const App = () => {
     </>
   );
 };
+
+
 
 export default App;

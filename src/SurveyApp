@@ -1,0 +1,68 @@
+import React, { useState, useEffect } from 'react';
+import PouchDB from 'pouchdb-browser';
+import PouchDBFind from 'pouchdb-find';
+
+PouchDB.plugin(PouchDBFind);
+
+const localDBSurvey = new PouchDB('survey');
+const localDBChoices = new PouchDB('choices');
+const remoteDBSurvey = new PouchDB(process.env.REACT_APP_CLOUDANT_SURVEY_URL, { skip_setup: true });
+const remoteDBChoices = new PouchDB(process.env.REACT_APP_CLOUDANT_CHOICES_URL, { skip_setup: true });
+
+const SurveyApp = () => {
+  const [log, setLog] = useState([]);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    initialSync();
+  }, []);
+
+  const initialSync = async () => {
+    try {
+      await localDBSurvey.replicate.from(remoteDBSurvey);
+      await localDBChoices.replicate.from(remoteDBChoices);
+      console.log('Datos sincronizados inicialmente desde el servidor.');
+      alert('Datos sincronizados inicialmente desde el servidor.');
+    } catch (err) {
+      console.error('Error en la sincronización inicial:', err);
+      alert('Error en la sincronización inicial.');
+    }
+  };
+
+  const syncData = async () => {
+    try {
+      await localDBSurvey.sync(remoteDBSurvey);
+      await localDBChoices.sync(remoteDBChoices);
+      console.log('Datos sincronizados con el servidor.');
+      alert('Datos sincronizados con el servidor.');
+    } catch (err) {
+      console.error('Error en la sincronización:', err);
+      alert('Error en la sincronización.');
+    }
+  };
+
+  const downloadData = async () => {
+    try {
+      const surveyDocs = await localDBSurvey.allDocs({ include_docs: true });
+      const choicesDocs = await localDBChoices.allDocs({ include_docs: true });
+      console.log('Documentos locales de Survey:', surveyDocs);
+      console.log('Documentos locales de Choices:', choicesDocs);
+      setLog([surveyDocs, choicesDocs]);
+      alert('Datos descargados localmente.');
+    } catch (err) {
+      console.error('Error al descargar los datos:', err);
+      alert('Error al descargar los datos.');
+    }
+  };
+
+  return (
+    <div>
+      <button onClick={downloadData}>Descargar Datos</button>
+      <button onClick={syncData}>Sincronizar Datos</button>
+      <progress value={progress} max="100">{progress}%</progress>
+      <pre>{JSON.stringify(log, null, 2)}</pre>
+    </div>
+  );
+};
+
+export default SurveyApp;
