@@ -8,6 +8,7 @@ import Footer from './Footer';
 import ExcelUploader from './ExcelUploader';
 import SurveyApp from './SurveyApp';
 import DataSync from './DataSync';
+import SurveyForm from './Survey';
 
 const globalStyles = css`
   * {
@@ -48,7 +49,7 @@ const mainContentStyles = css`
 
 const App = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState('page1');
+  const [currentPage, setCurrentPage] = useState('page4');
 
   const handleMenuToggle = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -94,18 +95,30 @@ const App = () => {
               </p>
               <MyEnhancedForm user={{ email: '', firstName: '', lastName: '' }} />
             </div>
-          ) : (
+          ) : currentPage === 'page2' ? ( // Asegúrate de que la condición sea correcta para tu caso
             <div>
               <h1>Bienvenido a Página 2</h1>
               <p>El formulario está oculto en esta página.</p>
+              <ExcelUploader></ExcelUploader>
+            </div>
+          ) : currentPage === 'page3' ? (
+            <div>
+              <h1>Bienvenido a Página 3</h1>
+              <p>El formulario está oculto en esta página.</p>
               <DataSync></DataSync>
+            </div>
+          ) : (
+            <div>
+              <h1>Bienvenido a Página 4</h1>
+              <p>El formulario está oculto en esta página.</p>
+              <SurveyForm user={{ firstName: ''}} />
             </div>
           )}
         </main>
         <Footer />
       </div>
     </>
-  );
+  );  
 };
 
 

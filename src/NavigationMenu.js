@@ -8,6 +8,8 @@ const SideMenu = ({ isOpen, onClose, onNavigate }) => {
       <nav>
         <button onClick={() => onNavigate('page1')}>Página 1</button>
         <button onClick={() => onNavigate('page2')}>Página 2</button>
+        <button onClick={() => onNavigate('page3')}>Página 3</button>
+        <button onClick={() => onNavigate('page4')}>Página 4</button>
       </nav>
     </div>
   );
