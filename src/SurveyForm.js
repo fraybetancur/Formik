@@ -1,55 +1,9 @@
 /** @jsxImportSource @emotion/react */
 import React, { useState, useEffect } from 'react';
-import PouchDB from 'pouchdb';
 import { css } from '@emotion/react';
 
-const localDB = new PouchDB('survey');
-const remoteDB = new PouchDB(`${process.env.REACT_APP_CLOUDANT_URL}/survey`, {
-  adapter: 'http',
-  auth: {
-    username: process.env.REACT_APP_CLOUDANT_APIKEY_SURVEY,
-    password: process.env.REACT_APP_CLOUDANT_PASSWORD_SURVEY,
-  },
-});
-
-const SurveyForm = () => {
-  const [questions, setQuestions] = useState([]);
+const SurveyForm = ({ questions, isLoading, isSyncing }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
-
-  const loadQuestions = () => {
-    localDB.allDocs({ include_docs: true })
-      .then(result => {
-        const loadedQuestions = result.rows.map(row => row.doc);
-        console.log('Loaded Questions:', loadedQuestions);  // Depuración
-        setQuestions(loadedQuestions);
-        setCurrentQuestionIndex(0); // Resetea el índice de pregunta al cargar
-        setIsLoading(false);
-        setIsSyncing(false); // Asegúrate de actualizar isSyncing a false después de cargar las preguntas
-      })
-      .catch(err => {
-        console.error('Error loading questions from PouchDB:', err);
-        setIsLoading(false);
-        setIsSyncing(false); // Asegúrate de actualizar isSyncing a false en caso de error
-      });
-  };
-
-  const syncData = async () => {
-    setIsSyncing(true);
-    try {
-      await localDB.replicate.from(remoteDB);
-      console.log('Synchronization complete');
-      loadQuestions();
-    } catch (error) {
-      console.error('Failed to sync:', error);
-      setIsSyncing(false); // Asegúrate de actualizar isSyncing a false en caso de error
-    }
-  };
-
-  useEffect(() => {
-    syncData(); // Sincroniza y carga preguntas al montar el componente
-  }, []);
 
   const handleNext = () => {
     if (currentQuestionIndex < questions.length - 1) {

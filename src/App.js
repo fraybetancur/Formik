@@ -8,7 +8,8 @@ import Footer from './Footer';
 import ExcelUploader from './ExcelUploader';
 import SurveyApp from './SurveyApp';
 import DataSync from './DataSync';
-import SurveyForm from './Survey';
+import SurveyForm from './SurveyForm';
+import QuestionLoader from './QuestionLoader';
 
 const globalStyles = css`
   * {
@@ -50,6 +51,9 @@ const mainContentStyles = css`
 const App = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('page4');
+  const [questions, setQuestions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const handleMenuToggle = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -95,23 +99,32 @@ const App = () => {
               </p>
               <MyEnhancedForm user={{ email: '', firstName: '', lastName: '' }} />
             </div>
-          ) : currentPage === 'page2' ? ( // Asegúrate de que la condición sea correcta para tu caso
+          ) : currentPage === 'page2' ? (
             <div>
               <h1>Bienvenido a Página 2</h1>
               <p>El formulario está oculto en esta página.</p>
-              <ExcelUploader></ExcelUploader>
+              <ExcelUploader />
             </div>
           ) : currentPage === 'page3' ? (
             <div>
               <h1>Bienvenido a Página 3</h1>
               <p>Sincronizacion de datos</p>
-              <DataSync></DataSync>
+              <DataSync />
             </div>
           ) : (
             <div>
               <h1>Bienvenido a Página 4</h1>
-              <p>Formulario de prueba</p>
-              <SurveyForm user={{ firstName: ''}} />
+              <p>Formulario de prueba y Sincronizacion</p>
+              <QuestionLoader 
+                setQuestions={setQuestions} 
+                setIsLoading={setIsLoading} 
+                setIsSyncing={setIsSyncing} 
+              />
+              <SurveyForm 
+                questions={questions} 
+                isLoading={isLoading} 
+                isSyncing={isSyncing} 
+              />
             </div>
           )}
         </main>
@@ -120,7 +133,5 @@ const App = () => {
     </>
   );  
 };
-
-
 
 export default App;
