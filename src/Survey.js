@@ -1,177 +1,144 @@
 /** @jsxImportSource @emotion/react */
+import React, { useState, useEffect } from 'react';
+import PouchDB from 'pouchdb';
 import { css } from '@emotion/react';
-import styled from '@emotion/styled';
-import React from 'react';
-import { withFormik } from 'formik';
-import * as Yup from 'yup';
-import classnames from 'classnames';
 
-export const DisplayFormikState = props => (
-  <div css={{ margin: '2rem 0' }}>
-    <h3 css={{ fontFamily: 'monospace' }} />
-    <pre
-      css={{
-        background: '#f6f8fa',
-        fontSize: '.65rem',
-        padding: '.5rem',
-      }}
-    >
-      <strong>props</strong> = {JSON.stringify(props, null, 2)}
-    </pre>
-  </div>
-);
-
-const formikEnhancer = withFormik({
-  validationSchema: Yup.object().shape({
-    firstName: Yup.string()
-      .min(2, "C'mon, your name is longer than that")
-      .required('First name is required.'),
-  }),
-  mapPropsToValues: ({ user }) => ({
-    ...user,
-  }),
-  handleSubmit: (payload, { setSubmitting }) => {
-    alert(payload.email);
-    setSubmitting(false);
+const localDB = new PouchDB('survey');
+const remoteDB = new PouchDB(`${process.env.REACT_APP_CLOUDANT_URL}/survey`, {
+  adapter: 'http',
+  auth: {
+    username: process.env.REACT_APP_CLOUDANT_APIKEY_SURVEY,
+    password: process.env.REACT_APP_CLOUDANT_PASSWORD_SURVEY,
   },
-  displayName: 'MyForm',
 });
 
-const InputFeedback = ({ error }) =>
-  error ? <div css={{ color: '#999', marginTop: '.25rem', ...(error && { color: 'red' }) }}>{error}</div> : null;
+const SurveyForm = () => {
+  const [questions, setQuestions] = useState([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
 
-const Label = ({ error, className, children, ...props }) => {
-  return (
-    <label css={{ fontWeight: 'bold', display: 'block', marginBottom: '.5rem', ...(error && { color: 'red' }) }} {...props}>
-      {children}
-    </label>
-  );
-};
+  const loadQuestions = () => {
+    localDB.allDocs({ include_docs: true })
+      .then(result => {
+        const loadedQuestions = result.rows.map(row => row.doc);
+        console.log('Loaded Questions:', loadedQuestions);  // Depuración
+        setQuestions(loadedQuestions);
+        setCurrentQuestionIndex(0); // Resetea el índice de pregunta al cargar
+        setIsLoading(false);
+        setIsSyncing(false); // Asegúrate de actualizar isSyncing a false después de cargar las preguntas
+      })
+      .catch(err => {
+        console.error('Error loading questions from PouchDB:', err);
+        setIsLoading(false);
+        setIsSyncing(false); // Asegúrate de actualizar isSyncing a false en caso de error
+      });
+  };
 
-const TextInput = ({ type, id, label, error, value, onChange, className, ...props }) => {
-  const classes = classnames(
-    {
-      'animated shake error': !!error,
-    },
-    className
-  );
+  const syncData = async () => {
+    setIsSyncing(true);
+    try {
+      await localDB.replicate.from(remoteDB);
+      console.log('Synchronization complete');
+      loadQuestions();
+    } catch (error) {
+      console.error('Failed to sync:', error);
+      setIsSyncing(false); // Asegúrate de actualizar isSyncing a false en caso de error
+    }
+  };
+
+  useEffect(() => {
+    syncData(); // Sincroniza y carga preguntas al montar el componente
+  }, []);
+
+  const handleNext = () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    }
+  };
+
+  useEffect(() => {
+    console.log('Current Question Index:', currentQuestionIndex);
+    console.log('Current Question:', questions[currentQuestionIndex]);
+  }, [currentQuestionIndex, questions]);
+
+  const currentQuestion = questions[currentQuestionIndex];
+
   return (
-    <div className={classes} css={{ marginBottom: '1rem' }}>
-      <Label htmlFor={id} error={error}>
-        {label}
-      </Label>
-      <input
-        id={id}
-        css={{
-          padding: '.5rem',
-          fontSize: '16px',
-          width: '100%',
-          display: 'block',
-          borderRadius: '4px',
-          border: '1px solid #ccc',
-          '&:focus': {
-            borderColor: '#007eff',
-            boxShadow: 'inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 0 3px rgba(0, 126, 255, 0.1)',
-            outline: 'none',
-          },
-          ...(error && { borderColor: 'red' })
-        }}
-        type={type}
-        value={value}
-        onChange={onChange}
-        {...props}
-      />
-      <InputFeedback error={error} />
+    <div css={css`
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    `}>
+      {isLoading || isSyncing ? (
+        <p>{isLoading ? 'Cargando preguntas...' : 'Sincronizando datos...'}</p>
+      ) : (
+        <>
+          {currentQuestion ? (
+            <>
+              <h2 css={css`margin-bottom: 20px;`}>{currentQuestion.questionText}</h2>
+              <div css={css`
+                display: flex;
+                justify-content: space-between;
+                width: 100%;
+                max-width: 300px;
+              `}>
+                <button 
+                  onClick={handleBack} 
+                  disabled={currentQuestionIndex === 0}
+                  css={css`
+                    padding: 10px 20px;
+                    margin-right: 10px;
+                    background-color: #007BFF;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    &:disabled {
+                      background-color: #cccccc;
+                      cursor: not-allowed;
+                    }
+                  `}
+                >
+                  Back
+                </button>
+                <button 
+                  onClick={handleNext} 
+                  disabled={currentQuestionIndex >= questions.length - 1}
+                  css={css`
+                    padding: 10px 20px;
+                    margin-left: 10px;
+                    background-color: #007BFF;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    &:disabled {
+                      background-color: #cccccc;
+                      cursor: not-allowed;
+                    }
+                  `}
+                >
+                  Next
+                </button>
+              </div>
+            </>
+          ) : (
+            <p>Pregunta no disponible</p>
+          )}
+        </>
+      )}
     </div>
   );
 };
-
-const Form = props => {
-  const {
-    values,
-    touched,
-    errors,
-    dirty,
-    handleChange,
-    handleBlur,
-    handleSubmit,
-    handleReset,
-    isSubmitting,
-  } = props;
-  return (
-    <form onSubmit={handleSubmit}>
-      <TextInput
-        id="firstName"
-        type="text"
-        label="First Name"
-        placeholder="John"
-        error={touched.firstName && errors.firstName}
-        value={values.firstName}
-        onChange={handleChange}
-        onBlur={handleBlur}
-      />
-      <button
-        type="button"
-        css={{
-          maxWidth: '150px',
-          margin: '20px 0',
-          padding: '12px 20px',
-          borderStyle: 'none',
-          borderRadius: '5px',
-          backgroundColor: '#08c',
-          boxShadow: '0px 2px 2px rgba(0, 0, 0, 0.15)',
-          fontSize: '17px',
-          fontWeight: '500',
-          color: '#fff',
-          cursor: 'pointer',
-          outline: 'none',
-          '-webkit-appearance': 'none',
-          '&:disabled': {
-            opacity: '.5',
-            cursor: 'not-allowed !important',
-          },
-          '& + button': {
-            marginLeft: '.5rem',
-          }
-        }}
-        onClick={handleReset}
-        disabled={!dirty || isSubmitting}
-      >
-        Reset
-      </button>
-      <button
-        type="submit"
-        css={{
-          maxWidth: '150px',
-          margin: '20px 0',
-          padding: '12px 20px',
-          borderStyle: 'none',
-          borderRadius: '5px',
-          backgroundColor: '#08c',
-          boxShadow: '0px 2px 2px rgba(0, 0, 0, 0.15)',
-          fontSize: '17px',
-          fontWeight: '500',
-          color: '#fff',
-          cursor: 'pointer',
-          outline: 'none',
-          '-webkit-appearance': 'none',
-          '&:disabled': {
-            opacity: '.5',
-            cursor: 'not-allowed !important',
-          },
-          '& + button': {
-            marginLeft: '.5rem',
-          }
-        }}
-        disabled={isSubmitting}
-      >
-        Submit
-      </button>
-      <DisplayFormikState {...props} />
-    </form>
-  );
-};
-
-const SurveyForm = formikEnhancer(Form);
 
 export default SurveyForm;

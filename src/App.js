@@ -104,13 +104,13 @@ const App = () => {
           ) : currentPage === 'page3' ? (
             <div>
               <h1>Bienvenido a Página 3</h1>
-              <p>El formulario está oculto en esta página.</p>
+              <p>Sincronizacion de datos</p>
               <DataSync></DataSync>
             </div>
           ) : (
             <div>
               <h1>Bienvenido a Página 4</h1>
-              <p>El formulario está oculto en esta página.</p>
+              <p>Formulario de prueba</p>
               <SurveyForm user={{ firstName: ''}} />
             </div>
           )}
