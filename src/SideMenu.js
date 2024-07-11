@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
 import { useSwipeable } from 'react-swipeable';
-import React, { useState } from 'react';
+import React from 'react';
 import styled from '@emotion/styled';
 
 const SideMenuContainer = styled.div`
@@ -104,80 +104,20 @@ const SideMenu = ({ isOpen, onClose, onNavigate }) => {
       <SideMenuContainer {...handlers} isOpen={isOpen}>
         <CloseButton onClick={onClose}>❎</CloseButton>
         <nav>
-          <NavButton onClick={() => onNavigate('page1')}>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              width="20"
-              height="20"
-            >
-              <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z" />
-            </svg>
-            Página 1
-          </NavButton>
-          <NavButton onClick={() => onNavigate('page2')}>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              width="20"
-              height="20"
-            >
-              <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z" />
-            </svg>
-            Página 2
-          </NavButton>
-          <Divider />
-          <NavButton onClick={() => onNavigate('configurations')}>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              width="20"
-              height="20"
-            >
-              <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z" />
-            </svg>
-            Página 3
-          </NavButton>
-          <NavButton onClick={() => onNavigate('configurations')}>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              width="20"
-              height="20"
-            >
-              <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z" />
-            </svg>
-            Página 4
-          </NavButton>
-          <Divider />
-          <NavButton onClick={() => onNavigate('configurations')}>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              width="20"
-              height="20"
-            >
-              <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z" />
-            </svg>
-            Configuraciones
-          </NavButton>
-          <NavButton onClick={() => onNavigate('help')}>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              width="20"
-              height="20"
-            >
-              <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z" />
-            </svg>
-            Ayuda y Servicio
-          </NavButton>
+          {Array.from({ length: 15 }, (_, i) => (
+            <NavButton key={i + 1} onClick={() => onNavigate(`page${i + 1}`)}>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                width="20"
+                height="20"
+              >
+                <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z" />
+              </svg>
+              Página {i + 1}
+            </NavButton>
+          ))}
         </nav>
       </SideMenuContainer>
     </>

@@ -1,15 +1,15 @@
 /** @jsxImportSource @emotion/react */
 import { Global, css } from '@emotion/react';
-import React, { useState } from 'react';
-import MyEnhancedForm from './formik-demo';
+import React, { useState, useContext, useCallback } from 'react';
 import SideMenu from './SideMenu';
 import Header from './Header';
 import Footer from './Footer';
-import ExcelUploader from './ExcelUploader';
-import SurveyApp from './SurveyApp';
-import DataSync from './DataSync';
-import SurveyForm from './SurveyForm';
-import QuestionLoader from './QuestionLoader';
+import { QuestionProvider, QuestionContext } from './QuestionContext';
+import {
+  Page1, Page2, Page3, Page4, Page5,
+  Page6, Page7, Page8, Page9, Page10,
+  Page11, Page12, Page13, Page14, Page15
+} from './pages';
 
 const globalStyles = css`
   * {
@@ -48,12 +48,11 @@ const mainContentStyles = css`
   }
 `;
 
-const App = () => {
+const AppContent = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState('page4');
-  const [questions, setQuestions] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [currentPage, setCurrentPage] = useState('page1'); // Página por defecto
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const { questions, isLoading, isSyncing, syncData } = useContext(QuestionContext);
 
   const handleMenuToggle = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -72,6 +71,70 @@ const App = () => {
     return 'My Application';
   };
 
+  const handleNext = useCallback(() => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    }
+  }, [currentQuestionIndex, questions.length]);
+
+  const handleBack = useCallback(() => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    }
+  }, [currentQuestionIndex]);
+
+  const currentQuestion = questions.length > 0 ? questions[currentQuestionIndex] : null;
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'page1':
+        return <Page1 currentQuestion={currentQuestion} />;
+      case 'page2':
+        return <Page2 />;
+      case 'page3':
+        return <Page3 />;
+      case 'page4':
+        return <Page4 
+                 questions={questions} 
+                 isLoading={isLoading} 
+                 isSyncing={isSyncing} 
+                 syncData={syncData} 
+               />;
+      case 'page5':
+        return <Page5 />;
+      case 'page6':
+        return (
+          <Page6 
+            currentQuestion={currentQuestion} 
+            handleNext={handleNext} 
+            handleBack={handleBack} 
+            isNextDisabled={currentQuestionIndex >= questions.length - 1}
+            isBackDisabled={currentQuestionIndex === 0}
+          />
+        );
+      case 'page7':
+        return <Page7 />;
+      case 'page8':
+        return <Page8 />;
+      case 'page9':
+        return <Page9 />;
+      case 'page10':
+        return <Page10 />;
+      case 'page11':
+        return <Page11 />;
+      case 'page12':
+        return <Page12 />;
+      case 'page13':
+        return <Page13 />;
+      case 'page14':
+        return <Page14 />;
+      case 'page15':
+        return <Page15 />;
+      default:
+        return <Page1 />;
+    }
+  };
+
   return (
     <>
       <Global styles={globalStyles} />
@@ -87,51 +150,18 @@ const App = () => {
           onNavigate={handleNavigate} 
         />
         <main css={mainContentStyles}>
-          {currentPage === 'page1' ? (
-            <div>
-              <h3>
-                Building input primitives with{' '}
-                <a href="https://github.com/jaredpalmer/formik">Formik</a>
-              </h3>
-              <p>
-                Formik enables you to quickly build and style your own reusable form-related
-                components extremely quickly.
-              </p>
-              <MyEnhancedForm user={{ email: '', firstName: '', lastName: '' }} />
-            </div>
-          ) : currentPage === 'page2' ? (
-            <div>
-              <h1>Bienvenido a Página 2</h1>
-              <p>El formulario está oculto en esta página.</p>
-              <ExcelUploader />
-            </div>
-          ) : currentPage === 'page3' ? (
-            <div>
-              <h1>Bienvenido a Página 3</h1>
-              <p>Sincronizacion de datos</p>
-              <DataSync />
-            </div>
-          ) : (
-            <div>
-              <h1>Bienvenido a Página 4</h1>
-              <p>Formulario de prueba y Sincronizacion</p>
-              <QuestionLoader 
-                setQuestions={setQuestions} 
-                setIsLoading={setIsLoading} 
-                setIsSyncing={setIsSyncing} 
-              />
-              <SurveyForm 
-                questions={questions} 
-                isLoading={isLoading} 
-                isSyncing={isSyncing} 
-              />
-            </div>
-          )}
+          {renderPage()}
         </main>
         <Footer />
       </div>
     </>
-  );  
+  );
 };
+
+const App = () => (
+  <QuestionProvider>
+    <AppContent />
+  </QuestionProvider>
+);
 
 export default App;

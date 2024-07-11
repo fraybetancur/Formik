@@ -1,50 +1,11 @@
 /** @jsxImportSource @emotion/react */
-import React, { useEffect } from 'react';
-import PouchDB from 'pouchdb';
+import React from 'react';
 import { css } from '@emotion/react';
+import { useContext } from 'react';
+import { QuestionContext } from './QuestionContext';
 
-const localDB = new PouchDB('survey');
-const remoteDB = new PouchDB(`${process.env.REACT_APP_CLOUDANT_URL}/survey`, {
-  adapter: 'http',
-  auth: {
-    username: process.env.REACT_APP_CLOUDANT_APIKEY_SURVEY,
-    password: process.env.REACT_APP_CLOUDANT_PASSWORD_SURVEY,
-  },
-});
-
-const QuestionLoader = ({ setQuestions, setIsLoading, setIsSyncing }) => {
-  const loadQuestions = () => {
-    setIsLoading(true);
-    localDB.allDocs({ include_docs: true })
-      .then(result => {
-        const loadedQuestions = result.rows.map(row => row.doc);
-        console.log('Loaded Questions:', loadedQuestions);
-        setQuestions(loadedQuestions);
-        setIsLoading(false);
-        setIsSyncing(false);
-      })
-      .catch(err => {
-        console.error('Error loading questions from PouchDB:', err);
-        setIsLoading(false);
-        setIsSyncing(false);
-      });
-  };
-
-  const syncData = async () => {
-    setIsSyncing(true);
-    try {
-      await localDB.replicate.from(remoteDB);
-      console.log('Synchronization complete');
-      loadQuestions();
-    } catch (error) {
-      console.error('Failed to sync:', error);
-      setIsSyncing(false);
-    }
-  };
-
-  useEffect(() => {
-    syncData();
-  }, []);
+const QuestionLoader = () => {
+  const { syncData } = useContext(QuestionContext);
 
   return (
     <div css={css`
