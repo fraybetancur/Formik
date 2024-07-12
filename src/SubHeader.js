@@ -76,12 +76,21 @@ const SubHeader = () => {
         try {
           // Elimina _id y _rev si existen
           const { _id, _rev, ...docWithoutIdRev } = doc.doc;
-          await remoteDB.post(docWithoutIdRev);
-          logMessages.push(`Uploaded response: ${_id}`);
-          successCount++;
+          const response = await remoteDB.post(docWithoutIdRev);
+
+          if (response.ok) {
+            logMessages.push(`Subida exitosa: ${response.id}`);
+            successCount++;
+            toast.success(`Subida exitosa: ${successCount}/${allDocs.rows.length}`);
+          } else {
+            logMessages.push(`Error: ${response.error} - ${response.reason}`);
+            errorCount++;
+            toast.error(`Error al subir: ${response.error} - ${response.reason}`);
+          }
         } catch (error) {
           logMessages.push(`Error uploading response: ${doc.doc._id}`);
           errorCount++;
+          toast.error(`Error al subir la respuesta: ${error.message}`);
         }
       }
 
