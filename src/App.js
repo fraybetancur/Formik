@@ -9,6 +9,7 @@ import DataSyncButton from './DataSyncButton';
 import SurveyForm from './Survey';
 import ResetDatabase from './ResetDatabase';
 import UploadResponsesToCloudant from './UploadToCloudant';
+import SubHeader from './SubHeader';
 
 // Lazy load de los componentes
 const MyEnhancedForm = lazy(() => import('./formik-demo'));
@@ -104,12 +105,9 @@ const AppContent = () => {
       <div css={appStyles}>
         {/* Header con funcionalidad para alternar el menú */}
         <Header onMenuToggle={handleMenuToggle} headerText="My Application" />
+        <SubHeader />
         {/* Menú lateral con funcionalidad para navegar entre componentes */}
         <SideMenu isOpen={isMenuOpen} onClose={handleMenuToggle} onNavigate={handleNavigate} />
-        {/* Botón de sincronización */}
-        <DataSyncButton />
-        <ResetDatabase/>
-        <UploadResponsesToCloudant/>
         {/* Contenido principal que cambia según el componente seleccionado */}
         <main css={mainContentStyles}>
           <Suspense fallback={<div>Cargando...</div>}>
