@@ -1,19 +1,19 @@
 /** @jsxImportSource @emotion/react */
 import { Global, css } from '@emotion/react';
 import React, { useState, Suspense, lazy } from 'react';
-import SideMenu from './SideMenu';
-import Header from './Header';
-import Footer from './Footer';
-import { QuestionProvider } from './QuestionContext';
-import SurveyForm from './Survey';
-import SubHeader from './SubHeader';
-import UploadToCloudant from './UploadToCloudant';
+import SideMenu from './components/SideMenu';
+import Header from './components/Header';
+import Footer from './components/Footer';
+import { QuestionProvider } from './components/QuestionContext';
+import SurveyForm from './components/Survey';
+import SubHeader from './components/SubHeader';
+import UploadToCloudant from './components/old/UploadToCloudant';
 
 // Lazy load de los componentes
-const MyEnhancedForm = lazy(() => import('./formik-demo'));
-const ExcelUploader = lazy(() => import('./ExcelUploader'));
-const DataSync = lazy(() => import('./DataSync'));
-const ResponsesList = lazy(() => import('./ResponsesList'));
+const MyEnhancedForm = lazy(() => import('./components/formik-demo'));
+const ExcelUploader = lazy(() => import('./components/ExcelUploader'));
+const DataSync = lazy(() => import('./components/old/DataSync'));
+const ResponsesList = lazy(() => import('./components/ResponsesList'));
 
 
 // Estilos globales para la aplicación
