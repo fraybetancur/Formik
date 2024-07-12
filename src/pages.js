@@ -17,12 +17,8 @@ export const Page4 = ({ questions, isLoading, isSyncing, syncData }) => (
   </>
 );
 export const Page5 = () => <div><h1>Contenido de la Página 5</h1></div>;
-export const Page6 = ({ currentQuestion }) => <FormularioDinamico currentQuestion={currentQuestion}currentQuestion={currentQuestion} 
-handleNext={handleNext} 
-handleBack={handleBack}
-isNextDisabled={isNextDisabled}
-isBackDisabled={isBackDisabled} />;
-export const Page7 = () => <div><h1>Contenido de la Página 7</h1></div>;
+export const Page6 = ({ currentQuestion }) => <FormularioDinamico currentQuestion={currentQuestion}></FormularioDinamico>;
+export const Page7 = (<SurveyForm />) ;
 export const Page8 = () => <div><h1>Contenido de la Página 8</h1></div>;
 export const Page9 = () => <div><h1>Contenido de la Página 9</h1></div>;
 export const Page10 = () => <div><h1>Contenido de la Página 10</h1></div>;

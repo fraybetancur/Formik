@@ -1,74 +1,93 @@
 /** @jsxImportSource @emotion/react */
-import React, { useState, useEffect } from 'react';
-import PouchDB from 'pouchdb';
+import React, { useState, useEffect, useContext } from 'react';
 import { css } from '@emotion/react';
+import PouchDB from 'pouchdb-browser';
+import { v4 as uuidv4 } from 'uuid';
+import { QuestionContext } from './QuestionContext';
 
-const localDB = new PouchDB('survey');
-const remoteDB = new PouchDB(`${process.env.REACT_APP_CLOUDANT_URL}/survey`, {
-  adapter: 'http',
-  auth: {
-    username: process.env.REACT_APP_CLOUDANT_APIKEY_SURVEY,
-    password: process.env.REACT_APP_CLOUDANT_PASSWORD_SURVEY,
-  },
-});
+const localDB = new PouchDB('responses');
 
+// Componente SurveyForm
 const SurveyForm = () => {
-  const [questions, setQuestions] = useState([]);
+  const { questions, isLoading, isSyncing } = useContext(QuestionContext);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
-
-  const loadQuestions = () => {
-    localDB.allDocs({ include_docs: true })
-      .then(result => {
-        const loadedQuestions = result.rows.map(row => row.doc);
-        console.log('Loaded Questions:', loadedQuestions);  // Depuración
-        setQuestions(loadedQuestions);
-        setCurrentQuestionIndex(0); // Resetea el índice de pregunta al cargar
-        setIsLoading(false);
-        setIsSyncing(false); // Asegúrate de actualizar isSyncing a false después de cargar las preguntas
-      })
-      .catch(err => {
-        console.error('Error loading questions from PouchDB:', err);
-        setIsLoading(false);
-        setIsSyncing(false); // Asegúrate de actualizar isSyncing a false en caso de error
-      });
-  };
-
-  const syncData = async () => {
-    setIsSyncing(true);
-    try {
-      await localDB.replicate.from(remoteDB);
-      console.log('Synchronization complete');
-      loadQuestions();
-    } catch (error) {
-      console.error('Failed to sync:', error);
-      setIsSyncing(false); // Asegúrate de actualizar isSyncing a false en caso de error
-    }
-  };
+  const [answer, setAnswer] = useState('');
+  const [responses, setResponses] = useState([]);
+  const [caseID] = useState(uuidv4());
 
   useEffect(() => {
-    syncData(); // Sincroniza y carga preguntas al montar el componente
+    const fetchResponses = async () => {
+      try {
+        const allDocs = await localDB.allDocs({ include_docs: true });
+        setResponses(allDocs.rows.map(row => row.doc));
+      } catch (error) {
+        console.error("Error fetching responses from PouchDB:", error);
+      }
+    };
+
+    fetchResponses();
   }, []);
 
-  const handleNext = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
+  // Función para manejar el cambio de respuesta
+  const handleChange = (e) => {
+    setAnswer(e.target.value);
+  };
+
+  // Función para manejar el almacenamiento y avanzar a la siguiente pregunta
+  const handleNext = async () => {
+    if (questions[currentQuestionIndex].Required === 'true' && answer.trim() === '') {
+      alert('Respuesta es requerida.');
+      return;
+    }
+
+    const existingResponseIndex = responses.findIndex(response => response.QuestionID === questions[currentQuestionIndex].QuestionID);
+
+    const response = {
+      _id: existingResponseIndex > -1 ? responses[existingResponseIndex]._id : uuidv4(),
+      CaseID: caseID,
+      ParentCaseID: caseID, // Esto debería ser generado de acuerdo a tu lógica de casos
+      CaseDetails: '',
+      QuestionID: questions[currentQuestionIndex].QuestionID,
+      Index: currentQuestionIndex,
+      ResponseID: uuidv4(),
+      Response: answer,
+    };
+
+    try {
+      if (answer.trim() !== '' || questions[currentQuestionIndex].Required === 'false') {
+        await localDB.put(response);
+        if (existingResponseIndex > -1) {
+          setResponses(responses.map((res, index) => index === existingResponseIndex ? response : res));
+        } else {
+          setResponses([...responses, response]);
+        }
+      }
+      setAnswer('');
+      if (currentQuestionIndex < questions.length - 1) {
+        setCurrentQuestionIndex(currentQuestionIndex + 1);
+      }
+    } catch (error) {
+      console.error("Error guardando la respuesta en PouchDB:", error);
     }
   };
 
+  // Función para retroceder a la pregunta anterior
   const handleBack = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
+      const previousResponse = responses.find(response => response.QuestionID === questions[currentQuestionIndex - 1].QuestionID);
+      setAnswer(previousResponse ? previousResponse.Response : '');
     }
   };
 
   useEffect(() => {
     console.log('Current Question Index:', currentQuestionIndex);
-    console.log('Current Question:', questions[currentQuestionIndex]);
+    if (questions && questions.length > 0) {
+      console.log('Current Question:', questions[currentQuestionIndex]);
+    }
   }, [currentQuestionIndex, questions]);
 
-  const currentQuestion = questions[currentQuestionIndex];
+  const currentQuestion = questions && questions.length > 0 ? questions[currentQuestionIndex] : null;
 
   return (
     <div css={css`
@@ -86,6 +105,18 @@ const SurveyForm = () => {
           {currentQuestion ? (
             <>
               <h2 css={css`margin-bottom: 20px;`}>{currentQuestion.QuestionText}</h2>
+              <input
+                type="text"
+                value={answer}
+                onChange={handleChange}
+                placeholder="Escribe tu respuesta aquí"
+                css={css`
+                  padding: 10px;
+                  width: 100%;
+                  max-width: 300px;
+                  margin-bottom: 20px;
+                `}
+              />
               <div css={css`
                 display: flex;
                 justify-content: space-between;
@@ -111,30 +142,64 @@ const SurveyForm = () => {
                 >
                   Back
                 </button>
-                <button 
-                  onClick={handleNext} 
-                  disabled={currentQuestionIndex >= questions.length - 1}
-                  css={css`
-                    padding: 10px 20px;
-                    margin-left: 10px;
-                    background-color: #007BFF;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    &:disabled {
-                      background-color: #cccccc;
-                      cursor: not-allowed;
-                    }
-                  `}
-                >
-                  Next
-                </button>
+                {currentQuestionIndex < questions.length - 1 ? (
+                  <button 
+                    onClick={handleNext} 
+                    disabled={questions[currentQuestionIndex].Required === 'true' && answer.trim() === ''}
+                    css={css`
+                      padding: 10px 20px;
+                      margin-left: 10px;
+                      background-color: #007BFF;
+                      color: white;
+                      border: none;
+                      border-radius: 5px;
+                      cursor: pointer;
+                      &:disabled {
+                        background-color: #cccccc;
+                        cursor: not-allowed;
+                      }
+                    `}
+                  >
+                    Next
+                  </button>
+                ) : (
+                  <button 
+                    onClick={handleNext}
+                    css={css`
+                      padding: 10px 20px;
+                      margin-left: 10px;
+                      background-color: #007BFF;
+                      color: white;
+                      border: none;
+                      border-radius: 5px;
+                      cursor: pointer;
+                      &:disabled {
+                        background-color: #cccccc;
+                        cursor: not-allowed;
+                      }
+                    `}
+                  >
+                    Submit
+                  </button>
+                )}
               </div>
             </>
           ) : (
             <p>Pregunta no disponible</p>
           )}
+
+          {/* Sección para mostrar las respuestas guardadas */}
+          <h2 css={css`margin-top: 40px;`}>Saved Responses</h2>
+          <pre css={css`
+            background: #f6f8fa;
+            font-size: 0.85rem;
+            padding: 10px;
+            width: 100%;
+            max-width: 500px;
+            overflow-x: auto;
+          `}>
+            {JSON.stringify(responses, null, 2)}
+          </pre>
         </>
       )}
     </div>

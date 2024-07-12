@@ -4,11 +4,25 @@ import PouchDBFind from 'pouchdb-find';
 
 PouchDB.plugin(PouchDBFind);
 
+// Inicializamos las bases de datos locales y remotas de PouchDB para survey
 const surveyDb = new PouchDB('survey');
-const remoteSurveyDb = new PouchDB('https://apikey-ad5815b4338243e1ac10394e732b53bf:f98a18155d05cfc220979bec6f22692d9fc87ef8@c9efcc17-6575-4ea9-9190-1faaa775d47e-bluemix.cloudantnosqldb.appdomain.cloud/survey');
+const remoteSurveyDb = new PouchDB(`${process.env.REACT_APP_CLOUDANT_URL}/survey`, {
+  adapter: 'http',
+  auth: {
+    username: process.env.REACT_APP_CLOUDANT_APIKEY_SURVEY,
+    password: process.env.REACT_APP_CLOUDANT_PASSWORD_SURVEY,
+  },
+});
 
+// Inicializamos las bases de datos locales y remotas de PouchDB para choices
 const choicesDb = new PouchDB('choices');
-const remoteChoicesDb = new PouchDB('https://apikey-508b08635fd44b62b1f730ff8f41b3bc:5817cdb3e77e735c55714cc9f736943c24501f5d@c9efcc17-6575-4ea9-9190-1faaa775d47e-bluemix.cloudantnosqldb.appdomain.cloud/choices');
+const remoteChoicesDb = new PouchDB(`${process.env.REACT_APP_CLOUDANT_URL}/choices`, {
+  adapter: 'http',
+  auth: {
+    username: process.env.REACT_APP_CLOUDANT_APIKEY_CHOICES,
+    password: process.env.REACT_APP_CLOUDANT_PASSWORD_CHOICES,
+  },
+});
 
 // Aumentar el límite de listeners permitidos
 surveyDb.setMaxListeners(20);
@@ -51,7 +65,7 @@ const DataSync = () => {
         choicesData: choicesResult.rows.map(row => row.doc),
       });
       console.log("Sincronización completada.");
-      alert('Data synced successfully');
+      alert('Datos sincronizados exitosamente');
     } catch (err) {
       console.error("Error durante la sincronización:", err);
       setError(err.message);
@@ -79,7 +93,7 @@ const DataSync = () => {
   return (
     <div>
       <button onClick={syncData}>Sync Data</button>
-      {loading && <p>Loading...</p>}
+      {loading && <p>Cargando...</p>}
       {error && <p>Error: {error}</p>}
       <div>
         <h2>Datos de Survey</h2>
