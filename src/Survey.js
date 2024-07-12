@@ -33,6 +33,20 @@ const SurveyForm = () => {
     setAnswer(e.target.value);
   };
 
+  const saveResponse = async (response) => {
+    try {
+      await localDB.put(response);
+      const existingResponseIndex = responses.findIndex(res => res.QuestionID === response.QuestionID);
+      if (existingResponseIndex > -1) {
+        setResponses(responses.map((res, index) => index === existingResponseIndex ? response : res));
+      } else {
+        setResponses([...responses, response]);
+      }
+    } catch (error) {
+      console.error("Error guardando la respuesta en PouchDB:", error);
+    }
+  };
+
   // Función para manejar el almacenamiento y avanzar a la siguiente pregunta
   const handleNext = async () => {
     if (questions[currentQuestionIndex].Required === 'true' && answer.trim() === '') {
@@ -40,34 +54,23 @@ const SurveyForm = () => {
       return;
     }
 
-    const existingResponseIndex = responses.findIndex(response => response.QuestionID === questions[currentQuestionIndex].QuestionID);
+    if (answer.trim() !== '') {
+      const response = {
+        _id: uuidv4(),
+        CaseID: caseID,
+        ParentCaseID: caseID,
+        CaseDetails: '',
+        QuestionID: questions[currentQuestionIndex].QuestionID,
+        Index: currentQuestionIndex,
+        ResponseID: uuidv4(),
+        Response: answer,
+      };
+      await saveResponse(response);
+    }
 
-    const response = {
-      _id: existingResponseIndex > -1 ? responses[existingResponseIndex]._id : uuidv4(),
-      CaseID: caseID,
-      ParentCaseID: caseID, // Esto debería ser generado de acuerdo a tu lógica de casos
-      CaseDetails: '',
-      QuestionID: questions[currentQuestionIndex].QuestionID,
-      Index: currentQuestionIndex,
-      ResponseID: uuidv4(),
-      Response: answer,
-    };
-
-    try {
-      if (answer.trim() !== '' || questions[currentQuestionIndex].Required === 'false') {
-        await localDB.put(response);
-        if (existingResponseIndex > -1) {
-          setResponses(responses.map((res, index) => index === existingResponseIndex ? response : res));
-        } else {
-          setResponses([...responses, response]);
-        }
-      }
-      setAnswer('');
-      if (currentQuestionIndex < questions.length - 1) {
-        setCurrentQuestionIndex(currentQuestionIndex + 1);
-      }
-    } catch (error) {
-      console.error("Error guardando la respuesta en PouchDB:", error);
+    setAnswer('');
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
   };
 
