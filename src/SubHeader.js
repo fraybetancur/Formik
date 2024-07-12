@@ -12,13 +12,17 @@ const localDB = new PouchDB('responses');
 const SubHeader = () => {
   const [loading, setLoading] = useState(false);
   const [log, setLog] = useState([]);
+  const [successCount, setSuccessCount] = useState(0);
+  const [errorCount, setErrorCount] = useState(0);
 
   // Función para manejar la sincronización de datos
   const handleSync = async () => {
     setLoading(true);
     try {
+      // Lógica para sincronizar datos aquí
       console.log('Syncing data...');
       toast.info('Sincronizando datos...');
+      // Simulamos la sincronización
       setTimeout(() => {
         setLoading(false);
         toast.success('Sincronización completada.');
@@ -65,46 +69,31 @@ const SubHeader = () => {
     try {
       const allDocs = await localDB.allDocs({ include_docs: true });
       const logMessages = [];
-      const totalDocs = allDocs.rows.length;
-      let successfulUploads = 0;
+      let successCount = 0;
+      let errorCount = 0;
 
       for (const doc of allDocs.rows) {
         try {
+          // Elimina _id y _rev si existen
           const { _id, _rev, ...docWithoutIdRev } = doc.doc;
-          const response = await remoteDB.post(docWithoutIdRev);
-
-          if (response.ok) {
-            successfulUploads++;
-            toast.success(`Subida exitosa: ${successfulUploads}/${totalDocs}`);
-          }
+          await remoteDB.post(docWithoutIdRev);
           logMessages.push(`Uploaded response: ${_id}`);
+          successCount++;
         } catch (error) {
-          if (error.status === 401) {
-            toast.error('Error 401: No autorizado. Verifique sus credenciales.');
-          } else if (error.status === 403) {
-            toast.error('Error 403: Prohibido. No tiene permisos para realizar esta acción.');
-          } else if (error.status === 404) {
-            toast.error('Error 404: Recurso no encontrado.');
-          } else if (error.status === 409) {
-            toast.error('Error 409: Conflicto. El documento ya existe.');
-          } else if (error.status === 412) {
-            toast.error('Error 412: Condición previa fallida.');
-          } else if (error.status === 500) {
-            toast.error('Error 500: Error interno del servidor.');
-          } else if (error.status === 503) {
-            toast.error('Error 503: Servicio no disponible.');
-          } else {
-            toast.error(`Error ${error.status}: ${error.message}`);
-          }
           logMessages.push(`Error uploading response: ${doc.doc._id}`);
+          errorCount++;
         }
       }
 
       setLog(logMessages);
-      if (successfulUploads === totalDocs) {
-        toast.success(`Respuestas subidas con éxito a Cloudant. Total: ${successfulUploads}/${totalDocs}`);
-      } else {
-        toast.warn(`Algunas respuestas no se pudieron subir. Total: ${successfulUploads}/${totalDocs}`);
+      setSuccessCount(successCount);
+      setErrorCount(errorCount);
+
+      if (successCount > 0) {
+        toast.success(`Respuestas subidas con éxito a Cloudant. Total: ${successCount}/${allDocs.rows.length}`);
+      }
+      if (errorCount > 0) {
+        toast.error(`Errores al subir respuestas a Cloudant. Total: ${errorCount}/${allDocs.rows.length}`);
       }
     } catch (error) {
       console.error("Error subiendo las respuestas a Cloudant:", error);
