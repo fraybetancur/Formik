@@ -5,18 +5,14 @@ import SideMenu from './SideMenu';
 import Header from './Header';
 import Footer from './Footer';
 import { QuestionProvider } from './QuestionContext';
-import DataSyncButton from './DataSyncButton';
 import SurveyForm from './Survey';
-import ResetDatabase from './ResetDatabase';
-import UploadResponsesToCloudant from './UploadToCloudant';
 import SubHeader from './SubHeader';
+import UploadToCloudant from './UploadToCloudant';
 
 // Lazy load de los componentes
 const MyEnhancedForm = lazy(() => import('./formik-demo'));
-const SimpleForm = lazy(() => import('./SimpleForm'));
 const ExcelUploader = lazy(() => import('./ExcelUploader'));
 const DataSync = lazy(() => import('./DataSync'));
-const FormularioDinamico = lazy(() => import('./FormularioDinamico'));
 const ResponsesList = lazy(() => import('./ResponsesList'));
 
 
@@ -85,10 +81,6 @@ const AppContent = () => {
         return <ExcelUploader />;
       case 'DataSync':
         return <DataSync />;
-      case 'FormularioDinamico':
-        return <FormularioDinamico />;
-      case 'SimpleForm':
-        return <SimpleForm />;
       case 'ResponsesList':
         return <ResponsesList />;
       case 'SurveyForm':

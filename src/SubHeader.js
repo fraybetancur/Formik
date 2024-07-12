@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { css } from '@emotion/react';
 import { FaSyncAlt, FaTrashAlt, FaCloudUploadAlt } from 'react-icons/fa';
 import PouchDB from 'pouchdb-browser';
-import axios from 'axios';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Inicializamos la base de datos local
 const localDB = new PouchDB('responses');
@@ -16,12 +17,15 @@ const SubHeader = () => {
   const handleSync = async () => {
     setLoading(true);
     try {
-      // Lógica para sincronizar datos aquí
       console.log('Syncing data...');
-      // Simulamos la sincronización
-      setTimeout(() => setLoading(false), 1000);
+      toast.info('Sincronizando datos...');
+      setTimeout(() => {
+        setLoading(false);
+        toast.success('Sincronización completada.');
+      }, 1000);
     } catch (error) {
       console.error('Error syncing data:', error);
+      toast.error('Error al sincronizar datos.');
       setLoading(false);
     }
   };
@@ -37,10 +41,10 @@ const SubHeader = () => {
         _deleted: true,
       }));
       await localDB.bulkDocs(deleteDocs);
-      alert('Database reset successful');
+      toast.success('Base de datos restablecida con éxito.');
     } catch (error) {
       console.error('Error resetting the database:', error);
-      alert('Failed to reset the database');
+      toast.error('Error al restablecer la base de datos.');
     } finally {
       setLoading(false);
     }
@@ -49,31 +53,63 @@ const SubHeader = () => {
   // Función para manejar la subida de datos a Cloudant
   const handleUpload = async () => {
     setLoading(true);
-    const logMessages = [];
+    toast.info('Subiendo datos...');
+    const remoteDB = new PouchDB(`${process.env.REACT_APP_CLOUDANT_URL}/responses`, {
+      adapter: 'http',
+      auth: {
+        username: process.env.REACT_APP_CLOUDANT_APIKEY_RESPONSES,
+        password: process.env.REACT_APP_CLOUDANT_PASSWORD_RESPONSES,
+      },
+    });
+
     try {
       const allDocs = await localDB.allDocs({ include_docs: true });
-      const responses = allDocs.rows.map(row => row.doc);
-      const remoteDBUrl = `${process.env.REACT_APP_CLOUDANT_URL}/responses`;
+      const logMessages = [];
+      const totalDocs = allDocs.rows.length;
+      let successfulUploads = 0;
 
-      for (const response of responses) {
+      for (const doc of allDocs.rows) {
         try {
-          // Subir cada respuesta a Cloudant
-          await axios.post(remoteDBUrl, response, {
-            auth: {
-              username: process.env.REACT_APP_CLOUDANT_APIKEY_RESPONSES,
-              password: process.env.REACT_APP_CLOUDANT_PASSWORD_RESPONSES,
-            },
-          });
-          logMessages.push(`Response uploaded successfully: ${response._id}`);
+          const { _id, _rev, ...docWithoutIdRev } = doc.doc;
+          const response = await remoteDB.post(docWithoutIdRev);
+
+          if (response.ok) {
+            successfulUploads++;
+            toast.success(`Subida exitosa: ${successfulUploads}/${totalDocs}`);
+          }
+          logMessages.push(`Uploaded response: ${_id}`);
         } catch (error) {
-          logMessages.push(`Error uploading response: ${response._id}`);
+          if (error.status === 401) {
+            toast.error('Error 401: No autorizado. Verifique sus credenciales.');
+          } else if (error.status === 403) {
+            toast.error('Error 403: Prohibido. No tiene permisos para realizar esta acción.');
+          } else if (error.status === 404) {
+            toast.error('Error 404: Recurso no encontrado.');
+          } else if (error.status === 409) {
+            toast.error('Error 409: Conflicto. El documento ya existe.');
+          } else if (error.status === 412) {
+            toast.error('Error 412: Condición previa fallida.');
+          } else if (error.status === 500) {
+            toast.error('Error 500: Error interno del servidor.');
+          } else if (error.status === 503) {
+            toast.error('Error 503: Servicio no disponible.');
+          } else {
+            toast.error(`Error ${error.status}: ${error.message}`);
+          }
+          logMessages.push(`Error uploading response: ${doc.doc._id}`);
         }
       }
+
       setLog(logMessages);
-      setLoading(false);
+      if (successfulUploads === totalDocs) {
+        toast.success(`Respuestas subidas con éxito a Cloudant. Total: ${successfulUploads}/${totalDocs}`);
+      } else {
+        toast.warn(`Algunas respuestas no se pudieron subir. Total: ${successfulUploads}/${totalDocs}`);
+      }
     } catch (error) {
-      console.error('Error uploading responses:', error);
-      setLog([...logMessages, 'Error uploading responses']);
+      console.error("Error subiendo las respuestas a Cloudant:", error);
+      toast.error('Error subiendo las respuestas a Cloudant.');
+    } finally {
       setLoading(false);
     }
   };
@@ -86,6 +122,7 @@ const SubHeader = () => {
       background-color: #fff;
       color: black;
     `}>
+      <ToastContainer />
       <button onClick={handleSync} disabled={loading} css={buttonSh}>
         <FaSyncAlt />
       </button>
@@ -95,12 +132,6 @@ const SubHeader = () => {
       <button onClick={handleUpload} disabled={loading} css={buttonSh}>
         <FaCloudUploadAlt />
       </button>
-      {loading && <div>Loading...</div>}
-      <div>
-        {log.map((message, index) => (
-          <div key={index}>{message}</div>
-        ))}
-      </div>
     </div>
   );
 };
@@ -108,7 +139,7 @@ const SubHeader = () => {
 const buttonSh = css`
   margin: 0.5rem;
   padding: 0.5rem;
-  background-color: #08c ;
+  background-color: #08c;
   color: white;
   border: none;
   border-radius: 5px;
