@@ -19,6 +19,8 @@ const headerStyle = css`
 const Left = styled.div`
   display: flex;
   align-items: center;
+  padding: 1.2rem;
+  color: white;
 `;
 
 const Center = styled.div`
@@ -32,6 +34,8 @@ const Center = styled.div`
 const Right = styled.div`
   display: flex;
   align-items: center;
+  padding: 1.2rem;
+  color: white;
 `;
 
 const buttonStyle = css`
@@ -40,8 +44,8 @@ const buttonStyle = css`
   font-size: 1.5rem;
   cursor: pointer;
   box-shadow: none;
+  color: white;
   margin: 0px 0;
-  
   &:focus {
     outline: none;
   }

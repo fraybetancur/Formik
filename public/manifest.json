@@ -1,5 +1,5 @@
 {
-  "name": "Your App Name",
+  "name": "SMP PRO",
   "short_name": "App",
   "description": "Description of your app",
   "start_url": ".",
@@ -26,7 +26,28 @@
       "src": "logo64x64.png",
       "sizes": "64x64",
       "type": "image/png"
+    },
+
+    {
+      "src": "logo144x144.png", 
+      "sizes": "144x144",
+      "type": "image/png"
     }
-  ]
+  ],
+
+  "screenshots": [
+  {
+    "src": "screenshot-desktop.jpg",
+    "sizes": "1920x1080",
+    "type": "image/jpg",
+    "platform": "wide"
+  },
+  {
+    "src": "screenshot-mobile.jpg",
+    "sizes": "372x801",
+    "type": "image/jpg",
+    "platform": "narrow"
+  }
+]
 
 }

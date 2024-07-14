@@ -1,52 +1,39 @@
 /* eslint-disable no-restricted-globals */
 /* eslint-disable no-unused-expressions */
 
-// Precache and route assets using Workbox
-self.__WB_MANIFEST;
+import { precacheAndRoute } from 'workbox-precaching';
+
+// This line automatically injects the manifest with the current build assets
+precacheAndRoute(self.__WB_MANIFEST);
 
 const CACHE_NAME = 'survey-cache-v1';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/static/js/bundle.js',
-  '/manifest.json',
-  '/logo192.png',
-  '/logo512.png',
-  // Add any other assets you want to cache here
-];
 
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        return cache.addAll(urlsToCache);
-      })
-  );
-});
-
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      })
-  );
+  console.log('Service worker installing...');
+  self.skipWaiting(); // Force the waiting service worker to become the active service worker.
 });
 
 self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
+  console.log('Service worker activating...');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
+          if (cacheName !== CACHE_NAME) {
+            console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
+    })
+  );
+  self.clients.claim(); // Claim clients immediately so the page reloads the service worker without waiting for a navigation event.
+});
+
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request).then(response => {
+      return response || fetch(event.request);
     })
   );
 });

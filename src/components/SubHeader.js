@@ -65,39 +65,39 @@ const SubHeader = () => {
         password: process.env.REACT_APP_CLOUDANT_PASSWORD_RESPONSES,
       },
     });
-
+  
     try {
-      const allDocs = await localDB.allDocs({ include_docs: true });
+      const allDocs = await localDB.allDocs({ include_docs: true, attachments: true });
       const logMessages = [];
       let successCount = 0;
       let errorCount = 0;
-
+  
       for (const doc of allDocs.rows) {
         try {
-          // Elimina _id y _rev si existen
           const { _id, _rev, ...docWithoutIdRev } = doc.doc;
-          const response = await remoteDB.post(docWithoutIdRev);
-
+          const docWithAttachments = { ...docWithoutIdRev, _attachments: doc.doc._attachments };
+          const response = await remoteDB.put({
+            _id,
+            ...docWithAttachments
+          });
+  
           if (response.ok) {
-            logMessages.push(`Subida exitosa: ${response.id}`);
+            logMessages.push(`Subida exitosa: ${_id}`);
             successCount++;
-            toast.success(`Subida exitosa: ${successCount}/${allDocs.rows.length}`);
           } else {
             logMessages.push(`Error: ${response.error} - ${response.reason}`);
             errorCount++;
-            toast.error(`Error al subir: ${response.error} - ${response.reason}`);
           }
         } catch (error) {
-          logMessages.push(`Error uploading response: ${doc.doc._id}`);
+          logMessages.push(`Error uploading response: ${doc.doc._id} - ${error.message}`);
           errorCount++;
-          toast.error(`Error al subir la respuesta: ${error.message}`);
         }
       }
-
+  
       setLog(logMessages);
       setSuccessCount(successCount);
       setErrorCount(errorCount);
-
+  
       if (successCount > 0) {
         toast.success(`Respuestas subidas con éxito a Cloudant. Total: ${successCount}/${allDocs.rows.length}`);
       }
@@ -111,6 +111,8 @@ const SubHeader = () => {
       setLoading(false);
     }
   };
+  
+
 
   return (
     <div css={css`
