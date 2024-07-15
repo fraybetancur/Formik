@@ -77,6 +77,7 @@ const SubHeader = () => {
           const { _id, _rev, ...docWithoutIdRev } = doc.doc;
           const docWithAttachments = { ...docWithoutIdRev, _attachments: doc.doc._attachments };
           const response = await remoteDB.put({
+            // new_edits: false,
             _id,
             ...docWithAttachments
           });

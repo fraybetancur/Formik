@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { lighten } from 'polished';
 
@@ -29,7 +29,6 @@ const StyledTextArea = styled.textarea`
 
   &:hover {
     border-color: ${lighten(0.2, '#ccc')};
-    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
   }
 
   &:focus {
@@ -40,25 +39,18 @@ const StyledTextArea = styled.textarea`
 `;
 
 const TextArea = ({ value, onChange, label }) => {
-  const [textValue, setTextValue] = useState(value);
   const textAreaRef = useRef(null);
 
   useEffect(() => {
-    autoResize();
-  }, [textValue]);
-
-  const handleTextChange = (e) => {
-    const { value } = e.target;
-    setTextValue(value);
-    onChange(value);
-  };
-
-  const autoResize = () => {
     const textArea = textAreaRef.current;
     if (textArea) {
       textArea.style.height = 'auto';
       textArea.style.height = textArea.scrollHeight + 'px';
     }
+  }, [value]);  // Se ejecuta cada vez que cambia el valor
+
+  const handleTextChange = (e) => {
+    onChange(e.target.value);
   };
 
   return (
@@ -66,7 +58,7 @@ const TextArea = ({ value, onChange, label }) => {
       {label && <StyledTextAreaLabel>{label}</StyledTextAreaLabel>}
       <StyledTextArea
         ref={textAreaRef}
-        value={textValue}
+        value={value}
         onChange={handleTextChange}
         rows="1"
         autoFocus

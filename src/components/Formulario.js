@@ -10,6 +10,8 @@ import DateInput from './Controls/DateInput';
 import RadioGroup from './Controls/RadioGroup';
 import CheckboxGroup from './Controls/Checkbox';
 import SearchableDropdown from './Controls/SearchableDropdown';
+import Dropdown from './Controls/Dropdown';
+import DropdownB from './Controls/DropdownB';
 import TextInput from './Controls/TextInput';
 import CompressedImageInput from './Controls/CompressedImageInput';
 
@@ -23,25 +25,42 @@ const SurveyForm = () => {
   const [responses, setResponses] = useState([]); // Cambiado de {} a []
   const [caseID] = useState(uuidv4());
 
-  const handleImageUpload = async (imageFile, previewDataUrl) => {
-    const responseId = uuidv4();
-    const imageResponse = {
-      _id: responseId,
-      type: 'image',
-      image: previewDataUrl, // Esto es opcional, depende de si quieres almacenar la vista previa en la DB
-      questionId: questions[currentQuestionIndex].QuestionID
-    };
+// Función callback en que recibe el archivo de imagen desde CompressedImageInput:
+// Estado inicial para el archivo de imagen y su vista previa en base64
+const [imageFile, setImageFile] = useState(null);
+const [previewDataUrl, setPreviewDataUrl] = useState('');
 
-    try {
-      await localDB.put(imageResponse);
-      const doc = await localDB.get(responseId);
-      await localDB.putAttachment(doc._id, 'image.jpg', doc._rev, imageFile, 'image/jpeg');
-      console.log("Imagen guardada correctamente en PouchDB");
-      setResponses([...responses, imageResponse]); // Actualizamos el estado con la nueva respuesta
-    } catch (error) {
-      console.error("Error al guardar la imagen en PouchDB:", error);
-    }
+// Función callback que recibe el archivo de imagen y su vista previa en base64
+// const handleImageUpload = (previewDataUrl, file) => {
+//   setImageFile(file);  // Actualiza el estado con el archivo recibido
+//   setPreviewDataUrl(previewDataUrl);  // Actualiza el estado con la vista previa en base64
+//   setAnswer('yes');
+// };
+const handleImageUpload = async (imageFile, previewDataUrl) => {
+  const responseId = uuidv4();
+  const imageResponse = {
+    _id: responseId,
+    type: 'image',
+    CaseID: caseID,
+    ParentCaseID: caseID,
+    CaseDetails: '',
+    QuestionID: questions[currentQuestionIndex].QuestionID,
+    Index: currentQuestionIndex,
+    ResponseID: responseId,
+    Response: '',
+    Url: previewDataUrl, // Esto es opcional, depende de si quieres almacenar la vista previa en la DB
   };
+
+  try {
+    await localDB.put(imageResponse);
+    const doc = await localDB.get(responseId);
+    await localDB.putAttachment(doc._id, 'image.jpg', doc._rev, imageFile, 'image/jpeg');
+    console.log("Imagen guardada correctamente en PouchDB");
+    setResponses([...responses, imageResponse]); // Actualizamos el estado con la nueva respuesta
+  } catch (error) {
+    console.error("Error al guardar la imagen en PouchDB:", error);
+  }
+};
 
   useEffect(() => {
     const fetchResponses = async () => {
@@ -76,29 +95,46 @@ const SurveyForm = () => {
     }
   };
 
-  const handleNext = async () => {
-    if (questions[currentQuestionIndex].Required === 'true' && typeof answer === 'string' && answer.trim() === '') {
+
+//*****handleNext---------------------------------------------------------------------------------------------------------------------------
+const handleNext = async () => {
+  // Verificar si la pregunta requiere una respuesta y si la respuesta está vacía
+  if (questions[currentQuestionIndex].Required === 'true') {
+    if (Array.isArray(answer) && answer.length === 0) {
+      alert('Respuesta es requerida.');
+      return;
+    } else if (typeof answer === 'string' && answer.trim() === '') {
       alert('Respuesta es requerida.');
       return;
     }
+  }
 
-    const response = {
-      _id: uuidv4(),
-      CaseID: caseID,
-      ParentCaseID: caseID,
-      CaseDetails: '',
-      QuestionID: questions[currentQuestionIndex].QuestionID,
-      Index: currentQuestionIndex,
-      ResponseID: uuidv4(),
-      Response: answer,
-    };
-    await saveResponse(response);
-
-    setAnswer('');
+  if ((typeof answer === 'string' && answer.trim() === '') || (Array.isArray(answer) && answer.length === 0)) {
+    console.log('No se guarda respuesta vacía.');
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
+    return;
+  }
+
+  const response = {
+    _id: uuidv4(),
+    CaseID: caseID,
+    ParentCaseID: caseID,
+    CaseDetails: '',
+    QuestionID: questions[currentQuestionIndex].QuestionID,
+    Index: currentQuestionIndex,
+    ResponseID: uuidv4(),
+    Response: answer,
   };
+  await saveResponse(response);
+
+  setAnswer('');  // Limpiar respuesta para la próxima pregunta
+  if (currentQuestionIndex < questions.length - 1) {
+    setCurrentQuestionIndex(currentQuestionIndex + 1);
+  }
+};
+ //--------------------------------------------------------------------------------------------------------------------------------- 
 
   const handleBack = () => {
     if (currentQuestionIndex > 0) {
@@ -176,6 +212,26 @@ const SurveyForm = () => {
                     name={currentQuestion.QuestionID}
                     hint="*Seleccione todas las opciones que apliquen"
                   />
+                )}
+                {currentQuestion.ResponseType === 'Lista Múltiple' && (
+                  <Dropdown
+                  options={getFilteredChoices().map(choice => ({
+                    OptionID: choice.OptionID,
+                    OptionText: choice.OptionText
+                  }))}
+                  value={answer}
+                  onChange={(value) => handleResponseChange(value)}
+                />
+                )}
+                {currentQuestion.ResponseType === 'Lista Múltiple 1' && (
+                  <DropdownB
+                  options={getFilteredChoices().map(choice => ({
+                    OptionID: choice.OptionID,
+                    OptionText: choice.OptionText
+                  }))}
+                  value={answer}
+                  onChange={(value) => handleResponseChange(value)}
+                />
                 )}
                 {currentQuestion.ResponseType === 'Cuadro de búsqueda' && (
                   <SearchableDropdown
@@ -289,7 +345,7 @@ const responsePreStyle = css`
   padding: 10px;
   font-size: 0.85rem;
   overflow-x: auto;
-  height: 70px;
+  height: 700px;
 `;
 
 const buttonContainerStyle = css`

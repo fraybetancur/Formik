@@ -13,7 +13,7 @@ const CompressedImageInput = ({ onImageUpload }) => {
 
     try {
       const options = {
-        maxSizeMB: 1, // Máximo tamaño en MB, ajustable según tus necesidades
+        maxSizeMB: 0.1, // Máximo tamaño en MB, ajustable según tus necesidades
         maxWidthOrHeight: 1920, // Ajustable según tus necesidades
         useWebWorker: true
       };
