@@ -1,119 +1,40 @@
 /** @jsxImportSource @emotion/react */
-import React, { useState } from 'react';
+import React, { useContext } from 'react';
 import { css } from '@emotion/react';
 import { FaSyncAlt, FaTrashAlt, FaCloudUploadAlt } from 'react-icons/fa';
-import PouchDB from 'pouchdb-browser';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-
-// Inicializamos la base de datos local
-const localDB = new PouchDB('responses');
+import { QuestionContext } from './QuestionContext';
 
 const SubHeader = () => {
-  const [loading, setLoading] = useState(false);
-  const [log, setLog] = useState([]);
-  const [successCount, setSuccessCount] = useState(0);
-  const [errorCount, setErrorCount] = useState(0);
+  const { syncData, handleUpload, handleReset, isSyncing, isUploading, isResetting } = useContext(QuestionContext);
 
-  // Función para manejar la sincronización de datos
-  const handleSync = async () => {
-    setLoading(true);
+  const handleSyncClick = async () => {
     try {
-      // Lógica para sincronizar datos aquí
-      console.log('Syncing data...');
-      toast.info('Sincronizando datos...');
-      // Simulamos la sincronización
-      setTimeout(() => {
-        setLoading(false);
-        toast.success('Sincronización completada.');
-      }, 1000);
+      await syncData();
+      toast.success('Sincronización completada.');
     } catch (error) {
-      console.error('Error syncing data:', error);
       toast.error('Error al sincronizar datos.');
-      setLoading(false);
     }
   };
 
-  // Función para manejar el reseteo de la base de datos
-  const handleReset = async () => {
-    setLoading(true);
+  const handleUploadClick = async () => {
     try {
-      const allDocs = await localDB.allDocs();
-      const deleteDocs = allDocs.rows.map(row => ({
-        _id: row.id,
-        _rev: row.value.rev,
-        _deleted: true,
-      }));
-      await localDB.bulkDocs(deleteDocs);
+      await handleUpload();
+      toast.success('Datos subidos a Cloudant.');
+    } catch (error) {
+      toast.error('Error al subir datos.');
+    }
+  };
+
+  const handleResetClick = async () => {
+    try {
+      await handleReset();
       toast.success('Base de datos restablecida con éxito.');
     } catch (error) {
-      console.error('Error resetting the database:', error);
       toast.error('Error al restablecer la base de datos.');
-    } finally {
-      setLoading(false);
     }
   };
-
-  // Función para manejar la subida de datos a Cloudant
-  const handleUpload = async () => {
-    setLoading(true);
-    toast.info('Subiendo datos...');
-    const remoteDB = new PouchDB(`${process.env.REACT_APP_CLOUDANT_URL}/responses`, {
-      adapter: 'http',
-      auth: {
-        username: process.env.REACT_APP_CLOUDANT_APIKEY_RESPONSES,
-        password: process.env.REACT_APP_CLOUDANT_PASSWORD_RESPONSES,
-      },
-    });
-  
-    try {
-      const allDocs = await localDB.allDocs({ include_docs: true, attachments: true });
-      const logMessages = [];
-      let successCount = 0;
-      let errorCount = 0;
-  
-      for (const doc of allDocs.rows) {
-        try {
-          const { _id, _rev, ...docWithoutIdRev } = doc.doc;
-          const docWithAttachments = { ...docWithoutIdRev, _attachments: doc.doc._attachments };
-          const response = await remoteDB.put({
-            // new_edits: false,
-            _id,
-            ...docWithAttachments
-          });
-  
-          if (response.ok) {
-            logMessages.push(`Subida exitosa: ${_id}`);
-            successCount++;
-          } else {
-            logMessages.push(`Error: ${response.error} - ${response.reason}`);
-            errorCount++;
-          }
-        } catch (error) {
-          logMessages.push(`Error uploading response: ${doc.doc._id} - ${error.message}`);
-          errorCount++;
-        }
-      }
-  
-      setLog(logMessages);
-      setSuccessCount(successCount);
-      setErrorCount(errorCount);
-  
-      if (successCount > 0) {
-        toast.success(`Respuestas subidas con éxito a Cloudant. Total: ${successCount}/${allDocs.rows.length}`);
-      }
-      if (errorCount > 0) {
-        toast.error(`Errores al subir respuestas a Cloudant. Total: ${errorCount}/${allDocs.rows.length}`);
-      }
-    } catch (error) {
-      console.error("Error subiendo las respuestas a Cloudant:", error);
-      toast.error('Error subiendo las respuestas a Cloudant.');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-
 
   return (
     <div css={css`
@@ -124,13 +45,13 @@ const SubHeader = () => {
       color: black;
     `}>
       <ToastContainer />
-      <button onClick={handleSync} disabled={loading} css={buttonSh}>
+      <button onClick={handleSyncClick} disabled={isSyncing || isUploading || isResetting} css={buttonSh}>
         <FaSyncAlt />
       </button>
-      <button onClick={handleReset} disabled={loading} css={buttonSh}>
+      <button onClick={handleResetClick} disabled={isSyncing || isUploading || isResetting} css={buttonSh}>
         <FaTrashAlt />
       </button>
-      <button onClick={handleUpload} disabled={loading} css={buttonSh}>
+      <button onClick={handleUploadClick} disabled={isSyncing || isUploading || isResetting} css={buttonSh}>
         <FaCloudUploadAlt />
       </button>
     </div>

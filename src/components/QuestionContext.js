@@ -22,13 +22,25 @@ const remoteChoicesDB = new PouchDB(`${process.env.REACT_APP_CLOUDANT_URL}/choic
   },
 });
 
+const localResponsesDB = new PouchDB('responses');
+const remoteResponsesDB = new PouchDB(`${process.env.REACT_APP_CLOUDANT_URL}/responses`, {
+  adapter: 'http',
+  auth: {
+    username: process.env.REACT_APP_CLOUDANT_APIKEY_RESPONSES,
+    password: process.env.REACT_APP_CLOUDANT_PASSWORD_RESPONSES,
+  },
+});
+
 export const QuestionContext = createContext();
 
 export const QuestionProvider = ({ children }) => {
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [questions, setQuestions] = useState([]);
   const [choices, setChoices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [error, setError] = useState(null);
 
   const loadQuestions = useCallback(async () => {
@@ -65,6 +77,7 @@ export const QuestionProvider = ({ children }) => {
       setIsSyncing(true);
       await syncWithRetry(localSurveyDB, remoteSurveyDB);
       await syncWithRetry(localChoicesDB, remoteChoicesDB);
+      await syncWithRetry(localResponsesDB, remoteResponsesDB);
       await loadQuestions();
       console.log("Sincronización completada.");
       alert('Datos sincronizados exitosamente');
@@ -76,12 +89,74 @@ export const QuestionProvider = ({ children }) => {
     }
   };
 
+  const handleUpload = async () => {
+    setIsUploading(true);
+    try {
+      const allDocs = await localResponsesDB.allDocs({ include_docs: true, attachments: true });
+      for (const doc of allDocs.rows) {
+        const { _id, _rev, ...docWithoutIdRev } = doc.doc;
+        const docWithAttachments = { ...docWithoutIdRev, _attachments: doc.doc._attachments };
+        await remoteResponsesDB.put({
+          _id,
+          ...docWithAttachments,
+        });
+      }
+      alert('Respuestas subidas con éxito a Cloudant');
+    } catch (error) {
+      console.error("Error subiendo las respuestas a Cloudant:", error);
+      alert('Error subiendo las respuestas a Cloudant.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleReset = async () => {
+    setIsResetting(true);
+    try {
+      const allDocs = await localResponsesDB.allDocs();
+      const deleteDocs = allDocs.rows.map(row => ({
+        _id: row.id,
+        _rev: row.value.rev,
+        _deleted: true,
+      }));
+      await localResponsesDB.bulkDocs(deleteDocs);
+      alert('Base de datos restablecida con éxito.');
+    } catch (error) {
+      console.error('Error restableciendo la base de datos:', error);
+      alert('Error restableciendo la base de datos.');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   useEffect(() => {
     loadQuestions();
   }, [loadQuestions]);
 
+  const handleNext = () => {
+    setCurrentQuestionIndex(prevIndex => Math.min(prevIndex + 1, questions.length - 1));
+  };
+
+  const handleBack = () => {
+    setCurrentQuestionIndex(prevIndex => Math.max(prevIndex - 1, 0));
+  };
+
   return (
-    <QuestionContext.Provider value={{ questions, choices, isLoading, isSyncing, syncData, error }}>
+    <QuestionContext.Provider value={{ 
+      questions, 
+      choices, 
+      currentQuestionIndex, 
+      isLoading, 
+      isSyncing, 
+      isUploading,
+      isResetting,
+      syncData, 
+      handleUpload,
+      handleReset,
+      error, 
+      handleNext, 
+      handleBack 
+    }}>
       {children}
     </QuestionContext.Provider>
   );
