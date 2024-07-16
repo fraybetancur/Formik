@@ -20,6 +20,7 @@ const ResponsesList = lazy(() => import('./components/ResponsesList'));
 const globalStyles = css`
   * {
     box-sizing: border-box;
+    overflow: hidden;
   }
 
   body {
@@ -98,7 +99,7 @@ const AppContent = () => {
       <Global styles={globalStyles} />
       <div css={appStyles}>
         {/* Header con funcionalidad para alternar el menú */}
-        <Header onMenuToggle={handleMenuToggle} headerText="My Application" />
+        <Header onMenuToggle={handleMenuToggle} headerText="DM SURVEYS" />
         <SubHeader />
         {/* Menú lateral con funcionalidad para navegar entre componentes */}
         <SideMenu isOpen={isMenuOpen} onClose={handleMenuToggle} onNavigate={handleNavigate} />

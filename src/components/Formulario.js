@@ -19,10 +19,8 @@ const localDB = new PouchDB('responses');
 
 // Componente SurveyForm
 const SurveyForm = () => {
-  const { questions, choices, isLoading, isSyncing } = useContext(QuestionContext);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const { questions, choices, isLoading, isSyncing, responses, setResponses, currentQuestionIndex, setCurrentQuestionIndex, handleReset, syncData, handleUpload } = useContext(QuestionContext);
   const [answer, setAnswer] = useState('');
-  const [responses, setResponses] = useState([]); // Cambiado de {} a []
   const [caseID] = useState(uuidv4());
 
 // Función callback en que recibe el archivo de imagen desde CompressedImageInput:
@@ -30,12 +28,6 @@ const SurveyForm = () => {
 const [imageFile, setImageFile] = useState(null);
 const [previewDataUrl, setPreviewDataUrl] = useState('');
 
-// Función callback que recibe el archivo de imagen y su vista previa en base64
-// const handleImageUpload = (previewDataUrl, file) => {
-//   setImageFile(file);  // Actualiza el estado con el archivo recibido
-//   setPreviewDataUrl(previewDataUrl);  // Actualiza el estado con la vista previa en base64
-//   setAnswer('yes');
-// };
 const handleImageUpload = async (imageFile, previewDataUrl) => {
   const responseId = uuidv4();
   const imageResponse = {
@@ -223,7 +215,7 @@ const handleNext = async () => {
                   onChange={(value) => handleResponseChange(value)}
                 />
                 )}
-                {currentQuestion.ResponseType === 'Lista Múltiple 1' && (
+                {currentQuestion.ResponseType === 'Opción Múltiple > 5' && (
                   <DropdownB
                   options={getFilteredChoices().map(choice => ({
                     OptionID: choice.OptionID,
@@ -259,16 +251,6 @@ const handleNext = async () => {
                     onChange={(e) => handleResponseChange(e.target.files[0])}
                   />
                 )}
-                {/* {['Cargar imagen', 'Cámara'].includes(currentQuestion.ResponseType) && (
-                  <CompressedImageInput
-                    type="file"
-                    accept={currentQuestion.ResponseType === 'Cargar imagen' ? 'image/*' :
-                            currentQuestion.ResponseType === 'Audio' ? 'audio/*' :
-                            currentQuestion.ResponseType === 'Cámara' ? 'video/*' :
-                            currentQuestion.ResponseType === 'Visor de PDF' ? 'application/pdf' : ''}
-                    onChange={(e) => handleResponseChange(e.target.files[0])}
-                  />
-                )} */}
                 {currentQuestion && currentQuestion.ResponseType === 'Cargar imagen' && (
                     <CompressedImageInput onImageUpload={handleImageUpload} />
                 )}
@@ -345,7 +327,8 @@ const responsePreStyle = css`
   padding: 10px;
   font-size: 0.85rem;
   overflow-x: auto;
-  height: 700px;
+  overflow-y: auto;
+  height: 70px;
 `;
 
 const buttonContainerStyle = css`

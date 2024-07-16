@@ -37,6 +37,7 @@ export const QuestionProvider = ({ children }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [questions, setQuestions] = useState([]);
   const [choices, setChoices] = useState([]);
+  const [responses, setResponses] = useState([]); // Añadido
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -50,6 +51,8 @@ export const QuestionProvider = ({ children }) => {
       setQuestions(surveyResult.rows.map(row => row.doc));
       const choicesResult = await localChoicesDB.allDocs({ include_docs: true });
       setChoices(choicesResult.rows.map(row => row.doc));
+      const responsesResult = await localResponsesDB.allDocs({ include_docs: true });
+      setResponses(responsesResult.rows.map(row => row.doc)); // Añadido
       setIsLoading(false);
     } catch (err) {
       setError(err.message);
@@ -79,7 +82,8 @@ export const QuestionProvider = ({ children }) => {
       await syncWithRetry(localChoicesDB, remoteChoicesDB);
       await syncWithRetry(localResponsesDB, remoteResponsesDB);
       await loadQuestions();
-      console.log("Sincronización completada.");
+      setResponses([]); // Actualizar el estado responses a un array vacío
+      setCurrentQuestionIndex(0); // Reiniciar el índice de la pregunta actual
       alert('Datos sincronizados exitosamente');
     } catch (err) {
       console.error("Error durante la sincronización:", err);
@@ -87,27 +91,29 @@ export const QuestionProvider = ({ children }) => {
     } finally {
       setIsSyncing(false);
     }
-  };
+};
 
   const handleUpload = async () => {
-    setIsUploading(true);
-    try {
-      const allDocs = await localResponsesDB.allDocs({ include_docs: true, attachments: true });
-      for (const doc of allDocs.rows) {
-        const { _id, _rev, ...docWithoutIdRev } = doc.doc;
-        const docWithAttachments = { ...docWithoutIdRev, _attachments: doc.doc._attachments };
-        await remoteResponsesDB.put({
-          _id,
-          ...docWithAttachments,
-        });
+      setIsUploading(true);
+      try {
+        const allDocs = await localResponsesDB.allDocs({ include_docs: true, attachments: true });
+        for (const doc of allDocs.rows) {
+          const { _id, _rev, ...docWithoutIdRev } = doc.doc;
+          const docWithAttachments = { ...docWithoutIdRev, _attachments: doc.doc._attachments };
+          await remoteResponsesDB.put({
+            _id,
+            ...docWithAttachments,
+          });
+        }
+        setResponses([]); // Actualizar el estado responses a un array vacío
+        setCurrentQuestionIndex(0); // Reiniciar el índice de la pregunta actual
+        alert('Respuestas subidas con éxito a Cloudant');
+      } catch (error) {
+        console.error("Error subiendo las respuestas a Cloudant:", error);
+        alert('Error subiendo las respuestas a Cloudant.');
+      } finally {
+        setIsUploading(false);
       }
-      alert('Respuestas subidas con éxito a Cloudant');
-    } catch (error) {
-      console.error("Error subiendo las respuestas a Cloudant:", error);
-      alert('Error subiendo las respuestas a Cloudant.');
-    } finally {
-      setIsUploading(false);
-    }
   };
 
   const handleReset = async () => {
@@ -120,6 +126,8 @@ export const QuestionProvider = ({ children }) => {
         _deleted: true,
       }));
       await localResponsesDB.bulkDocs(deleteDocs);
+      setResponses([]); // Actualizar el estado responses a un array vacío
+      setCurrentQuestionIndex(0); // Reiniciar el índice de la pregunta actual
       alert('Base de datos restablecida con éxito.');
     } catch (error) {
       console.error('Error restableciendo la base de datos:', error);
@@ -133,19 +141,14 @@ export const QuestionProvider = ({ children }) => {
     loadQuestions();
   }, [loadQuestions]);
 
-  const handleNext = () => {
-    setCurrentQuestionIndex(prevIndex => Math.min(prevIndex + 1, questions.length - 1));
-  };
-
-  const handleBack = () => {
-    setCurrentQuestionIndex(prevIndex => Math.max(prevIndex - 1, 0));
-  };
-
   return (
     <QuestionContext.Provider value={{ 
       questions, 
       choices, 
+      responses, // Añadir responses al contexto
+      setResponses, // Añadido para poder actualizar responses
       currentQuestionIndex, 
+      setCurrentQuestionIndex,
       isLoading, 
       isSyncing, 
       isUploading,
@@ -154,8 +157,6 @@ export const QuestionProvider = ({ children }) => {
       handleUpload,
       handleReset,
       error, 
-      handleNext, 
-      handleBack 
     }}>
       {children}
     </QuestionContext.Provider>
