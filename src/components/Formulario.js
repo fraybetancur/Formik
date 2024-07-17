@@ -8,57 +8,50 @@ import { QuestionContext } from './QuestionContext';
 import TextArea from './Controls/TextArea'; 
 import DateInput from './Controls/DateInput';
 import RadioGroup from './Controls/RadioGroup';
-import CheckboxGroup from './Controls/Checkbox';
+import CheckboxGroup from './Controls/CheckboxGroup';
 import SearchableDropdown from './Controls/SearchableDropdown';
 import Dropdown from './Controls/Dropdown';
-import DropdownB from './Controls/DropdownB';
+import DropdownMultiple from './Controls/DropdownMultiple';
 import TextInput from './Controls/TextInput';
 import CompressedImageInput from './Controls/CompressedImageInput';
 
 const localDB = new PouchDB('responses');
 
-// Componente SurveyForm
 const SurveyForm = () => {
   const { questions, choices, isLoading, isSyncing, responses, setResponses, currentQuestionIndex, setCurrentQuestionIndex, handleReset, syncData, handleUpload } = useContext(QuestionContext);
   const [answer, setAnswer] = useState('');
   const [caseID] = useState(uuidv4());
 
-// Función callback en que recibe el archivo de imagen desde CompressedImageInput:
-// Estado inicial para el archivo de imagen y su vista previa en base64
-const [imageFile, setImageFile] = useState(null);
-const [previewDataUrl, setPreviewDataUrl] = useState('');
+  const handleImageUpload = async (imageFile, previewDataUrl) => {
+    const responseId = uuidv4();
+    const imageResponse = {
+      _id: responseId,
+      type: 'image',
+      CaseID: caseID,
+      ParentCaseID: caseID,
+      CaseDetails: '',
+      QuestionID: questions[currentQuestionIndex].QuestionID,
+      Index: currentQuestionIndex,
+      ResponseID: responseId,
+      Response: '',
+      Url: previewDataUrl,
+    };
 
-const handleImageUpload = async (imageFile, previewDataUrl) => {
-  const responseId = uuidv4();
-  const imageResponse = {
-    _id: responseId,
-    type: 'image',
-    CaseID: caseID,
-    ParentCaseID: caseID,
-    CaseDetails: '',
-    QuestionID: questions[currentQuestionIndex].QuestionID,
-    Index: currentQuestionIndex,
-    ResponseID: responseId,
-    Response: '',
-    Url: previewDataUrl, // Esto es opcional, depende de si quieres almacenar la vista previa en la DB
+    try {
+      await localDB.put(imageResponse);
+      const doc = await localDB.get(responseId);
+      await localDB.putAttachment(doc._id, 'image.jpg', doc._rev, imageFile, 'image/jpeg');
+      setResponses([...responses, imageResponse]);
+    } catch (error) {
+      console.error("Error al guardar la imagen en PouchDB:", error);
+    }
   };
-
-  try {
-    await localDB.put(imageResponse);
-    const doc = await localDB.get(responseId);
-    await localDB.putAttachment(doc._id, 'image.jpg', doc._rev, imageFile, 'image/jpeg');
-    console.log("Imagen guardada correctamente en PouchDB");
-    setResponses([...responses, imageResponse]); // Actualizamos el estado con la nueva respuesta
-  } catch (error) {
-    console.error("Error al guardar la imagen en PouchDB:", error);
-  }
-};
 
   useEffect(() => {
     const fetchResponses = async () => {
       try {
         const allDocs = await localDB.allDocs({ include_docs: true });
-        setResponses(allDocs.rows.map(row => row.doc)); // Cambiado el setResponses para ajustar el formato
+        setResponses(allDocs.rows.map(row => row.doc));
       } catch (error) {
         console.error("Error fetching responses from PouchDB:", error);
       }
@@ -73,65 +66,67 @@ const handleImageUpload = async (imageFile, previewDataUrl) => {
 
   const saveResponse = async (response) => {
     try {
-      await localDB.put(response);
-      setResponses(prevResponses => {
-        const existingResponseIndex = prevResponses.findIndex(res => res.QuestionID === response.QuestionID);
-        if (existingResponseIndex > -1) {
-          return prevResponses.map((res, index) => index === existingResponseIndex ? response : res);
-        } else {
-          return [...prevResponses, response];
-        }
-      }); // Cambiado el setResponses para ajustar el formato
+      const existingResponse = await localDB.get(response._id).catch(err => null);
+      if (!existingResponse || existingResponse.Response !== response.Response) {
+        await localDB.put(response);
+        setResponses(prevResponses => {
+          const existingResponseIndex = prevResponses.findIndex(res => res.QuestionID === response.QuestionID);
+          if (existingResponseIndex > -1) {
+            return prevResponses.map((res, index) => index === existingResponseIndex ? response : res);
+          } else {
+            return [...prevResponses, response];
+          }
+        });
+      }
     } catch (error) {
       console.error("Error guardando la respuesta en PouchDB:", error);
     }
   };
 
-
-//*****handleNext---------------------------------------------------------------------------------------------------------------------------
-const handleNext = async () => {
-  // Verificar si la pregunta requiere una respuesta y si la respuesta está vacía
-  if (questions[currentQuestionIndex].Required === 'true') {
-    if (Array.isArray(answer) && answer.length === 0) {
-      alert('Respuesta es requerida.');
-      return;
-    } else if (typeof answer === 'string' && answer.trim() === '') {
-      alert('Respuesta es requerida.');
+  const handleNext = async () => {
+    // Verificar si la pregunta requiere una respuesta y si la respuesta está vacía
+    if (questions[currentQuestionIndex].Required === 'true') {
+      if (Array.isArray(answer) && answer.length === 0) {
+        alert('Respuesta es requerida.');
+        return;
+      } else if (typeof answer === 'string' && answer.trim() === '') {
+        alert('Respuesta es requerida.');
+        return;
+      }
+    }
+  
+    // Verificar si la respuesta está vacía y manejar adecuadamente el caso de array
+    if ((typeof answer === 'string' && answer.trim() === '') || (Array.isArray(answer) && answer.length === 0)) {
+      console.log('No se guarda respuesta vacía.');
+      if (currentQuestionIndex < questions.length - 1) {
+        setCurrentQuestionIndex(currentQuestionIndex + 1);
+      }
       return;
     }
-  }
-
-  if ((typeof answer === 'string' && answer.trim() === '') || (Array.isArray(answer) && answer.length === 0)) {
-    console.log('No se guarda respuesta vacía.');
+  
+    const response = {
+      _id: `${caseID}-${questions[currentQuestionIndex].QuestionID}`,
+      CaseID: caseID,
+      ParentCaseID: caseID,
+      CaseDetails: '',
+      QuestionID: questions[currentQuestionIndex].QuestionID,
+      Index: currentQuestionIndex,
+      ResponseID: uuidv4(),
+      Response: answer,
+    };
+    await saveResponse(response);
+  
+    setAnswer('');  // Limpiar respuesta para la próxima pregunta
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
-    return;
-  }
-
-  const response = {
-    _id: uuidv4(),
-    CaseID: caseID,
-    ParentCaseID: caseID,
-    CaseDetails: '',
-    QuestionID: questions[currentQuestionIndex].QuestionID,
-    Index: currentQuestionIndex,
-    ResponseID: uuidv4(),
-    Response: answer,
   };
-  await saveResponse(response);
-
-  setAnswer('');  // Limpiar respuesta para la próxima pregunta
-  if (currentQuestionIndex < questions.length - 1) {
-    setCurrentQuestionIndex(currentQuestionIndex + 1);
-  }
-};
- //--------------------------------------------------------------------------------------------------------------------------------- 
+  
 
   const handleBack = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
-      const previousResponse = responses.find(response => response.QuestionID === questions[currentQuestionIndex - 1].QuestionID); // Cambiado para buscar en el array
+      const previousResponse = responses.find(response => response.QuestionID === questions[currentQuestionIndex - 1].QuestionID);
       setAnswer(previousResponse ? previousResponse.Response : '');
     }
   };
@@ -181,7 +176,7 @@ const handleNext = async () => {
                 {currentQuestion.ResponseType === 'Fecha' && (
                   <DateInput value={answer || ''} onChange={handleResponseChange} />
                 )}
-                {currentQuestion.ResponseType === 'Opción Única' && (
+                {currentQuestion.ResponseType === 'Opción Única < 5' && (
                   <RadioGroup
                     options={getFilteredChoices().map(choice => ({
                       value: choice.OptionText,
@@ -193,7 +188,7 @@ const handleNext = async () => {
                     hint="*Seleccione una opción de la lista"
                   />
                 )}
-                {currentQuestion.ResponseType === 'Opción Múltiple' && (
+                {currentQuestion.ResponseType === 'Opción Múltiple < 5' && (
                   <CheckboxGroup
                     options={getFilteredChoices().map(choice => ({
                       value: choice.OptionText,
@@ -205,25 +200,25 @@ const handleNext = async () => {
                     hint="*Seleccione todas las opciones que apliquen"
                   />
                 )}
-                {currentQuestion.ResponseType === 'Lista Múltiple' && (
+                {currentQuestion.ResponseType === 'Opción Única > 5' && (
                   <Dropdown
-                  options={getFilteredChoices().map(choice => ({
-                    OptionID: choice.OptionID,
-                    OptionText: choice.OptionText
-                  }))}
-                  value={answer}
-                  onChange={(value) => handleResponseChange(value)}
-                />
+                    options={getFilteredChoices().map(choice => ({
+                      OptionID: choice.OptionID,
+                      OptionText: choice.OptionText
+                    }))}
+                    value={answer}
+                    onChange={(value) => handleResponseChange(value)}
+                  />
                 )}
                 {currentQuestion.ResponseType === 'Opción Múltiple > 5' && (
-                  <DropdownB
-                  options={getFilteredChoices().map(choice => ({
-                    OptionID: choice.OptionID,
-                    OptionText: choice.OptionText
-                  }))}
-                  value={answer}
-                  onChange={(value) => handleResponseChange(value)}
-                />
+                  <DropdownMultiple
+                    options={getFilteredChoices().map(choice => ({
+                      OptionID: choice.OptionID,
+                      OptionText: choice.OptionText
+                    }))}
+                    value={answer}
+                    onChange={(value) => handleResponseChange(value)}
+                  />
                 )}
                 {currentQuestion.ResponseType === 'Cuadro de búsqueda' && (
                   <SearchableDropdown
@@ -252,7 +247,7 @@ const handleNext = async () => {
                   />
                 )}
                 {currentQuestion && currentQuestion.ResponseType === 'Cargar imagen' && (
-                    <CompressedImageInput onImageUpload={handleImageUpload} />
+                  <CompressedImageInput onImageUpload={handleImageUpload} />
                 )}
               </>
             )}
@@ -313,7 +308,6 @@ const questionContainerStyle = css`
 const responseContainerStyle = css`
   flex: 1;
   overflow-y: auto;
-
 `;
 
 const savedResponsesStyle = css`
@@ -335,14 +329,6 @@ const buttonContainerStyle = css`
   display: flex;
   padding: 10px 0;
   justify-content: space-between;
-
-  // position: absolute;
-  // bottom: 50px; /* Espacio desde el fondo */
-  // width: 100%;
-  // display: flex;
-  // justify-content: space-between;
-  // padding: 0 20px;
-
 `;
 
 const buttonStyle = css`

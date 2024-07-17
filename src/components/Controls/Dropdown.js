@@ -1,61 +1,44 @@
-/** @jsxImportSource @emotion/react */
 import React from 'react';
-import Select from 'react-select';
-import { css } from '@emotion/react';
+import styled from 'styled-components';
+import { lighten } from 'polished';
 
-const customStyles = {
-  control: (provided) => ({
-    ...provided,
-    padding: 10,
-    border: '1px solid #ccc',
-    boxShadow: '0 0 5px rgba(0, 0, 0, 0.1)',
-    '&:hover': {
-      borderColor: '#0078d4'
-    }
-  }),
-  option: (provided, state) => ({
-    ...provided,
-    backgroundColor: state.isFocused ? 'lightblue' : state.isSelected ? 'lightgray' : null,
-    color: 'black',
-    cursor: 'pointer'
-  }),
-  multiValue: (provided) => ({
-    ...provided,
-    backgroundColor: 'lightgray'
-  }),
-  multiValueLabel: (provided) => ({
-    ...provided,
-    color: 'black'
-  }),
-  multiValueRemove: (provided) => ({
-    ...provided,
-    color: 'black',
-    ':hover': {
-      backgroundColor: 'red',
-      color: 'white'
-    }
-  })
-};
+const Container = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+`;
 
-const Dropdown = ({ options, value, onChange, placeholder }) => {
-  const handleChange = selectedOptions => {
-    onChange(selectedOptions ? selectedOptions.map(option => option.value) : []);
-  };
+const StyledSelect = styled.select`
+  padding: 10px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  transition: border-color 0.3s, box-shadow 0.3s;
 
-  const formattedOptions = options.map(option => ({ value: option.OptionText, label: option.OptionText }));
+  &:hover {
+    border-color: ${lighten(0.2, '#ccc')};
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+  }
 
+  &:focus {
+    border-color: #0078d4;
+    box-shadow: 0 0 5px rgba(0, 120, 212, 0.5);
+    outline: none;
+  }
+`;
+
+const Dropdown = ({ options, value, onChange }) => {
   return (
-    <div css={css`width: 100%;`}>
-      <Select
-        styles={customStyles}
-        options={formattedOptions}
-        isMulti
-        onChange={handleChange}
-        value={formattedOptions.filter(option => value.includes(option.value))}
-        placeholder={placeholder}
-        noOptionsMessage={() => 'No hay opciones'}
-      />
-    </div>
+    <Container>
+      <StyledSelect value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="" disabled>Seleccione una opción</option>
+        {options.map(option => (
+          <option key={option.OptionID} value={option.OptionText}>
+            {option.OptionText}
+          </option>
+        ))}
+      </StyledSelect>
+    </Container>
   );
 };
 

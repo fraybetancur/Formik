@@ -70,7 +70,7 @@ const DropdownB = ({ options, value, onChange, showSearch = false }) => {
         />
       )}
       <StyledSelect value={value} onChange={handleSelectChange} multiple>
-        <option value="" disabled>Seleccione una opción</option>
+        <option value="" disabled>Seleccione todas las opciones que apliquen</option>
         {filteredOptions.map(option => (
           <option key={option.OptionID} value={option.OptionText}>
             {option.OptionText}
