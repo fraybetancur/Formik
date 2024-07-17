@@ -1,10 +1,7 @@
-/** @jsxImportSource @emotion/react */
 import React, { useState, useEffect } from 'react';
 import { css } from '@emotion/react';
-import PouchDB from 'pouchdb-browser';
+import { finalDB } from './QuestionContext'; // Importa finalDB
 import { TextField, List, ListItem, ListItemText, Avatar, CircularProgress } from '@mui/material';
-
-const localDB = new PouchDB('responses');
 
 const ParticipantList = ({ onSelectParticipant }) => {
   const [participants, setParticipants] = useState([]);
@@ -14,21 +11,22 @@ const ParticipantList = ({ onSelectParticipant }) => {
   useEffect(() => {
     const fetchParticipants = async () => {
       try {
-        const allDocs = await localDB.allDocs({ include_docs: true });
+        const allDocs = await finalDB.allDocs({ include_docs: true });
         const fetchedParticipants = allDocs.rows
-          .filter(row => row.doc.QuestionID === 'Q04' || row.doc.QuestionID === 'Q12' || row.doc.QuestionID === 'Q02')
           .reduce((acc, row) => {
-            const { CaseID, QuestionID, Response, Url } = row.doc;
-            if (!acc[CaseID]) acc[CaseID] = { CaseID };
-            if (QuestionID === 'Q04') acc[CaseID].name = Response;
-            if (QuestionID === 'Q12') acc[CaseID].documentNumber = Response;
-            if (QuestionID === 'Q02') acc[CaseID].photo = Url;
+            row.doc.responses.forEach(response => {
+              const { CaseID, QuestionID, Response, Url } = response;
+              if (!acc[CaseID]) acc[CaseID] = { CaseID };
+              if (QuestionID === 'Q04') acc[CaseID].name = Response;
+              if (QuestionID === 'Q12') acc[CaseID].documentNumber = Response;
+              if (QuestionID === 'Q02') acc[CaseID].photo = Url;
+            });
             return acc;
           }, {});
         
         setParticipants(Object.values(fetchedParticipants));
       } catch (err) {
-        console.error('Error fetching participants from PouchDB:', err);
+        console.error('Error fetching participants from finalDB:', err);
       } finally {
         setLoading(false);
       }

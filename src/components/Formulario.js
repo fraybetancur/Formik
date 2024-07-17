@@ -4,8 +4,8 @@ import { css } from '@emotion/react';
 import PouchDB from 'pouchdb-browser';
 import { v4 as uuidv4 } from 'uuid';
 import { useSwipeable } from 'react-swipeable';
-import { QuestionContext } from './QuestionContext';
-import TextArea from './Controls/TextArea'; 
+import { QuestionContext, localResponsesDB } from './QuestionContext'; // Importa localResponsesDB
+import TextArea from './Controls/TextArea';
 import DateInput from './Controls/DateInput';
 import RadioGroup from './Controls/RadioGroup';
 import CheckboxGroup from './Controls/CheckboxGroup';
@@ -16,6 +16,7 @@ import TextInput from './Controls/TextInput';
 import CompressedImageInput from './Controls/CompressedImageInput';
 
 const localDB = new PouchDB('responses');
+const finalDB = new PouchDB('finalDB'); // Añadir esta línea para crear finalDB
 
 const SurveyForm = () => {
   const { questions, choices, isLoading, isSyncing, responses, setResponses, currentQuestionIndex, setCurrentQuestionIndex, handleReset, syncData, handleUpload } = useContext(QuestionContext);
@@ -64,27 +65,46 @@ const SurveyForm = () => {
     setAnswer(value);
   };
 
-  const saveResponse = async (response) => {
-    try {
-      const existingResponse = await localDB.get(response._id).catch(err => null);
-      if (!existingResponse || existingResponse.Response !== response.Response) {
+  const saveOrUpdateResponse = async (response, retries = 3) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const existingResponse = await localDB.get(response._id).catch(err => null);
+        if (existingResponse) {
+          // Actualizar la respuesta existente
+          response._rev = existingResponse._rev;
+        }
         await localDB.put(response);
         setResponses(prevResponses => {
-          const existingResponseIndex = prevResponses.findIndex(res => res.QuestionID === response.QuestionID);
+          const existingResponseIndex = prevResponses.findIndex(res => res._id === response._id);
           if (existingResponseIndex > -1) {
             return prevResponses.map((res, index) => index === existingResponseIndex ? response : res);
           } else {
             return [...prevResponses, response];
           }
         });
+        return;
+      } catch (error) {
+        if (error.status === 409) {
+          const existingResponse = await localDB.get(response._id);
+          response._rev = existingResponse._rev;
+        } else {
+          console.error("Error guardando la respuesta en PouchDB:", error);
+          throw error;
+        }
       }
+    }
+    throw new Error('No se pudo guardar la respuesta después de varios intentos.');
+  };
+
+  const saveResponse = async (response) => {
+    try {
+      await saveOrUpdateResponse(response);
     } catch (error) {
-      console.error("Error guardando la respuesta en PouchDB:", error);
+      console.error("Error final al guardar la respuesta en PouchDB:", error);
     }
   };
 
   const handleNext = async () => {
-    // Verificar si la pregunta requiere una respuesta y si la respuesta está vacía
     if (questions[currentQuestionIndex].Required === 'true') {
       if (Array.isArray(answer) && answer.length === 0) {
         alert('Respuesta es requerida.');
@@ -94,8 +114,7 @@ const SurveyForm = () => {
         return;
       }
     }
-  
-    // Verificar si la respuesta está vacía y manejar adecuadamente el caso de array
+
     if ((typeof answer === 'string' && answer.trim() === '') || (Array.isArray(answer) && answer.length === 0)) {
       console.log('No se guarda respuesta vacía.');
       if (currentQuestionIndex < questions.length - 1) {
@@ -103,7 +122,7 @@ const SurveyForm = () => {
       }
       return;
     }
-  
+
     const response = {
       _id: `${caseID}-${questions[currentQuestionIndex].QuestionID}`,
       CaseID: caseID,
@@ -114,14 +133,13 @@ const SurveyForm = () => {
       ResponseID: uuidv4(),
       Response: answer,
     };
+
     await saveResponse(response);
-  
-    setAnswer('');  // Limpiar respuesta para la próxima pregunta
+    setAnswer('');
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
   };
-  
 
   const handleBack = () => {
     if (currentQuestionIndex > 0) {
@@ -129,6 +147,32 @@ const SurveyForm = () => {
       const previousResponse = responses.find(response => response.QuestionID === questions[currentQuestionIndex - 1].QuestionID);
       setAnswer(previousResponse ? previousResponse.Response : '');
     }
+  };
+
+  const saveSurveyToFinalDB = async (caseID) => {
+    try {
+      const allResponses = await localResponsesDB.find({
+        selector: { CaseID: caseID }
+      });
+
+      const surveyData = {
+        _id: caseID,
+        responses: allResponses.docs,
+        timestamp: new Date().toISOString(),
+      };
+
+      await finalDB.put(surveyData);
+      console.log('Encuesta guardada en finalDB:', surveyData);
+    } catch (error) {
+      console.error('Error al guardar la encuesta en finalDB:', error);
+    }
+  };
+
+  const handleSubmit = async () => {
+    await handleNext();  // Asegura guardar la última respuesta
+    await saveSurveyToFinalDB(caseID);  // Agrega esta línea
+    alert('Encuesta completada y guardada en la base de datos final.');
+    // Opcional: puedes resetear el formulario o redirigir al usuario
   };
 
   const getFilteredChoices = () => {
@@ -280,7 +324,7 @@ const SurveyForm = () => {
           </button>
         ) : (
           <button 
-            onClick={handleNext}
+            onClick={handleSubmit}
             css={buttonStyle}
           >
             Submit
@@ -322,7 +366,7 @@ const responsePreStyle = css`
   font-size: 0.85rem;
   overflow-x: auto;
   overflow-y: auto;
-  height: 70px;
+  height: 700px;
 `;
 
 const buttonContainerStyle = css`

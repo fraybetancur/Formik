@@ -21,7 +21,7 @@ const ResponsesList = lazy(() => import('./components/ResponsesList'));
 const globalStyles = css`
   * {
     box-sizing: border-box;
-    overflow: hidden;
+    // overflow: hidden;
   }
 
   body {

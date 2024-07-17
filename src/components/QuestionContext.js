@@ -3,6 +3,7 @@ import PouchDB from 'pouchdb-browser';
 import PouchDBFind from 'pouchdb-find';
 
 PouchDB.plugin(PouchDBFind);
+const finalDB = new PouchDB('finalDB');
 
 const localSurveyDB = new PouchDB('survey');
 const remoteSurveyDB = new PouchDB(`${process.env.REACT_APP_CLOUDANT_URL}/survey`, {
@@ -82,6 +83,8 @@ export const QuestionProvider = ({ children }) => {
       await syncWithRetry(localChoicesDB, remoteChoicesDB);
       await syncWithRetry(localResponsesDB, remoteResponsesDB);
       await loadQuestions();
+      setResponses([]); // Actualizar el estado responses a un array vacío
+      setCurrentQuestionIndex(0); // Reiniciar el índice de la pregunta actual
       alert('Datos sincronizados exitosamente');
     } catch (err) {
       console.error("Error durante la sincronización:", err);
@@ -97,16 +100,14 @@ export const QuestionProvider = ({ children }) => {
       const allDocs = await localResponsesDB.allDocs({ include_docs: true, attachments: true });
       for (const doc of allDocs.rows) {
         const { _id, _rev, ...docWithoutIdRev } = doc.doc;
-        const existingDoc = await remoteResponsesDB.get(_id).catch(err => null);
-
-        if (!existingDoc || existingDoc._rev !== _rev) {
-          await remoteResponsesDB.put({
-            _id,
-            ...docWithoutIdRev,
-            _rev: existingDoc ? existingDoc._rev : undefined,
-          });
-        }
+        const docWithAttachments = { ...docWithoutIdRev, _attachments: doc.doc._attachments };
+        await remoteResponsesDB.put({
+          _id,
+          ...docWithAttachments,
+        });
       }
+      setResponses([]); // Actualizar el estado responses a un array vacío
+      setCurrentQuestionIndex(0); // Reiniciar el índice de la pregunta actual
       alert('Respuestas subidas con éxito a Cloudant');
     } catch (error) {
       console.error("Error subiendo las respuestas a Cloudant:", error);
@@ -126,8 +127,8 @@ export const QuestionProvider = ({ children }) => {
         _deleted: true,
       }));
       await localResponsesDB.bulkDocs(deleteDocs);
-      setResponses([]);
-      setCurrentQuestionIndex(0);
+      setResponses([]); // Actualizar el estado responses a un array vacío
+      setCurrentQuestionIndex(0); // Reiniciar el índice de la pregunta actual
       alert('Base de datos restablecida con éxito.');
     } catch (error) {
       console.error('Error restableciendo la base de datos:', error);
@@ -145,8 +146,8 @@ export const QuestionProvider = ({ children }) => {
     <QuestionContext.Provider value={{ 
       questions, 
       choices, 
-      responses,
-      setResponses,
+      responses, // Añadir responses al contexto
+      setResponses, // Añadido para poder actualizar responses
       currentQuestionIndex, 
       setCurrentQuestionIndex,
       isLoading, 
@@ -162,3 +163,9 @@ export const QuestionProvider = ({ children }) => {
     </QuestionContext.Provider>
   );
 };
+
+// Agrega esto al final del archivo QuestionContext.js para exportar la base de datos
+export { localResponsesDB };
+// Agrega esto al final del archivo QuestionContext.js para exportar la base de datos finalDB
+export { finalDB };
+
