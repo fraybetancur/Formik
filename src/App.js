@@ -8,6 +8,7 @@ import { QuestionProvider } from './components/QuestionContext';
 import SurveyForm from './components/Survey';
 import SubHeader from './components/SubHeader';
 import Formulario from './components/Formulario';
+import ParticipantList from './components/ParticipantList';
 
 // Lazy load de los componentes
 const MyEnhancedForm = lazy(() => import('./components/formik-demo'));
@@ -88,6 +89,8 @@ const AppContent = () => {
         return <SurveyForm />;
       case 'Formulario':
         return <Formulario />;
+      case 'ParticipantList':
+        return <ParticipantList />;
       default:
         return <MyEnhancedForm />;
     }
