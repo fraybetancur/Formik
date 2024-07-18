@@ -3,7 +3,6 @@ import PouchDB from 'pouchdb-browser';
 import PouchDBFind from 'pouchdb-find';
 
 PouchDB.plugin(PouchDBFind);
-const finalDB = new PouchDB('finalDB');
 
 const localSurveyDB = new PouchDB('survey');
 const remoteSurveyDB = new PouchDB(`${process.env.REACT_APP_CLOUDANT_URL}/survey`, {
@@ -32,10 +31,12 @@ const remoteResponsesDB = new PouchDB(`${process.env.REACT_APP_CLOUDANT_URL}/res
   },
 });
 
+const finalDB = new PouchDB('finalDB');
+
 export const QuestionContext = createContext();
 
 export const QuestionProvider = ({ children }) => {
-  const [currentComponent, setCurrentComponent] = useState('ParticipantList'); // Componente inicial
+  const [currentComponent, setCurrentComponent] = useState('ParticipantList');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [questions, setQuestions] = useState([]);
   const [choices, setChoices] = useState([]);
@@ -44,6 +45,7 @@ export const QuestionProvider = ({ children }) => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [resetTrigger, setResetTrigger] = useState(false); // Añadir un estado para disparar el reset
   const [error, setError] = useState(null);
 
   const loadQuestions = useCallback(async () => {
@@ -83,9 +85,10 @@ export const QuestionProvider = ({ children }) => {
       await syncWithRetry(localSurveyDB, remoteSurveyDB);
       await syncWithRetry(localChoicesDB, remoteChoicesDB);
       await syncWithRetry(localResponsesDB, remoteResponsesDB);
+      await syncWithRetry(finalDB, remoteResponsesDB); // Sincroniza finalDB con remoteResponsesDB
       await loadQuestions();
-      setResponses([]); // Actualizar el estado responses a un array vacío
-      setCurrentQuestionIndex(0); // Reiniciar el índice de la pregunta actual
+      setResponses([]);
+      setCurrentQuestionIndex(0);
       alert('Datos sincronizados exitosamente');
     } catch (err) {
       console.error("Error durante la sincronización:", err);
@@ -98,7 +101,7 @@ export const QuestionProvider = ({ children }) => {
   const handleUpload = async () => {
     setIsUploading(true);
     try {
-      const allDocs = await localResponsesDB.allDocs({ include_docs: true, attachments: true });
+      const allDocs = await finalDB.allDocs({ include_docs: true, attachments: true });
       for (const doc of allDocs.rows) {
         const { _id, _rev, ...docWithoutIdRev } = doc.doc;
         const docWithAttachments = { ...docWithoutIdRev, _attachments: doc.doc._attachments };
@@ -107,8 +110,6 @@ export const QuestionProvider = ({ children }) => {
           ...docWithAttachments,
         });
       }
-      setResponses([]); // Actualizar el estado responses a un array vacío
-      setCurrentQuestionIndex(0); // Reiniciar el índice de la pregunta actual
       alert('Respuestas subidas con éxito a Cloudant');
     } catch (error) {
       console.error("Error subiendo las respuestas a Cloudant:", error);
@@ -128,14 +129,28 @@ export const QuestionProvider = ({ children }) => {
         _deleted: true,
       }));
       await finalDB.bulkDocs(deleteDocs);
-      setResponses([]); // Actualizar el estado responses a un array vacío
-      setCurrentQuestionIndex(0); // Reiniciar el índice de la pregunta actual
+      setResetTrigger(!resetTrigger); // Dispara el reset al cambiar el estado
       alert('Base de datos restablecida con éxito.');
     } catch (error) {
       console.error('Error restableciendo la base de datos:', error);
       alert('Error restableciendo la base de datos.');
     } finally {
       setIsResetting(false);
+    }
+  };
+
+  const handleResetResponses = async () => {
+    try {
+      const allDocs = await localResponsesDB.allDocs();
+      const deleteDocs = allDocs.rows.map(row => ({
+        _id: row.id,
+        _rev: row.value.rev,
+        _deleted: true,
+      }));
+      await localResponsesDB.bulkDocs(deleteDocs);
+      setResponses([]);
+    } catch (error) {
+      console.error('Error restableciendo las respuestas:', error);
     }
   };
 
@@ -147,8 +162,8 @@ export const QuestionProvider = ({ children }) => {
     <QuestionContext.Provider value={{ 
       questions, 
       choices, 
-      responses, // Añadir responses al contexto
-      setResponses, // Añadido para poder actualizar responses
+      responses, 
+      setResponses, 
       currentQuestionIndex, 
       setCurrentQuestionIndex,
       isLoading, 
@@ -158,16 +173,15 @@ export const QuestionProvider = ({ children }) => {
       syncData, 
       handleUpload,
       handleReset,
+      handleResetResponses,
+      resetTrigger, // Proveer el resetTrigger
       error,
-      currentComponent, // Proveer el componente actual
-      setCurrentComponent, // Proveer la función para cambiar el componente
+      currentComponent, 
+      setCurrentComponent, 
     }}>
       {children}
     </QuestionContext.Provider>
   );
 };
 
-// Agrega esto al final del archivo QuestionContext.js para exportar la base de datos
-export { localResponsesDB };
-// Agrega esto al final del archivo QuestionContext.js para exportar la base de datos finalDB
-export { finalDB };
+export { localResponsesDB, finalDB };

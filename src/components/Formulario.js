@@ -19,7 +19,7 @@ const localDB = new PouchDB('responses');
 const finalDB = new PouchDB('finalDB'); // Añadir esta línea para crear finalDB
 
 const SurveyForm = ({ onNavigate }) => { // Asegurarse de recibir onNavigate como prop
-  const { questions, choices, isLoading, isSyncing, responses, setResponses, currentQuestionIndex, setCurrentQuestionIndex, handleReset, syncData, handleUpload } = useContext(QuestionContext);
+  const { questions, choices, isLoading, isSyncing, responses, setResponses, currentQuestionIndex, setCurrentQuestionIndex, handleResetResponses, syncData, handleUpload } = useContext(QuestionContext);
   const [answer, setAnswer] = useState('');
   const [caseID] = useState(uuidv4());
 
@@ -176,7 +176,7 @@ const SurveyForm = ({ onNavigate }) => { // Asegurarse de recibir onNavigate com
   const handleSubmit = async () => {
     await handleNext();  // Asegura guardar la última respuesta
     await saveSurveyToFinalDB(caseID);  // Agrega esta línea
-    await handleReset();  // Llamar a handleReset para reiniciar responses en PouchDB
+    await handleResetResponses();  // Llamar a handleResetResponses para reiniciar responses en PouchDB
     alert('Encuesta completada y guardada en la base de datos final.');
     onNavigate('ParticipantList');  // Navegar a ParticipantList
   };
