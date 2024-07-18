@@ -4,19 +4,18 @@ import React, { useState, Suspense, lazy, useContext } from 'react';
 import SideMenu from './components/SideMenu';
 import Header from './components/Header';
 import Footer from './components/Footer';
-import { QuestionProvider, QuestionContext } from './components/QuestionContext'; // Asegúrate de importar QuestionContext
+import { QuestionProvider, QuestionContext } from './components/QuestionContext';
 import SurveyForm from './components/Survey';
 import SubHeader from './components/SubHeader';
 import Formulario from './components/Formulario';
 import ParticipantList from './components/ParticipantList';
+import ParticipantDetails from './components/ParticipantDetails'; // Asegúrate de importar ParticipantDetails
 
-// Lazy load de los componentes
 const MyEnhancedForm = lazy(() => import('./components/formik-demo'));
 const ExcelUploader = lazy(() => import('./components/ExcelUploader'));
 const DataSync = lazy(() => import('./components/old/DataSync'));
 const ResponsesList = lazy(() => import('./components/ResponsesList'));
 
-// Estilos globales para la aplicación
 const globalStyles = css`
   * {
     box-sizing: border-box;
@@ -37,16 +36,14 @@ const globalStyles = css`
   }
 `;
 
-// Estilos para el contenedor principal de la aplicación
 const appStyles = css`
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  padding-top: 4rem; /* Ajusta este valor según la altura del header */
-  padding-bottom: 4rem; /* Ajusta este valor según la altura del footer */
+  padding-top: 4rem;
+  padding-bottom: 4rem;
 `;
 
-// Estilos para el contenido principal
 const mainContentStyles = css`
   flex: 1;
   padding: 1rem;
@@ -56,10 +53,9 @@ const mainContentStyles = css`
   }
 `;
 
-// Componente principal de contenido de la aplicación
 const AppContent = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { currentComponent, setCurrentComponent, setCurrentQuestionIndex } = useContext(QuestionContext); // Asegúrate de obtener setCurrentQuestionIndex
+  const { currentComponent, setCurrentComponent, setCurrentQuestionIndex } = useContext(QuestionContext);
 
   const handleMenuToggle = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -67,10 +63,10 @@ const AppContent = () => {
 
   const handleNavigate = (component) => {
     if (component === 'Formulario') {
-      setCurrentQuestionIndex(0); // Reinicia el índice de la pregunta al navegar a Formulario
+      setCurrentQuestionIndex(0);
     }
     setCurrentComponent(component);
-    setIsMenuOpen(false); // Cierra el menú al navegar
+    setIsMenuOpen(false);
   };
 
   const renderComponent = () => {
@@ -88,9 +84,11 @@ const AppContent = () => {
       case 'Formulario':
         return <Formulario onNavigate={handleNavigate} />;
       case 'ParticipantList':
-        return <ParticipantList />;
+        return <ParticipantList onNavigate={handleNavigate} />;
+      case 'ParticipantDetails':
+        return <ParticipantDetails onNavigate={handleNavigate} />;
       default:
-        return <ParticipantList />; // Asegurar que el valor por defecto sea ParticipantList
+        return <ParticipantList onNavigate={handleNavigate} />;
     }
   };
 
@@ -112,7 +110,6 @@ const AppContent = () => {
   );
 };
 
-// Componente principal de la aplicación que envuelve todo en el QuestionProvider
 const App = () => (
   <QuestionProvider>
     <AppContent />

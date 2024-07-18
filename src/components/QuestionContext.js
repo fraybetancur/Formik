@@ -121,13 +121,13 @@ export const QuestionProvider = ({ children }) => {
   const handleReset = async () => {
     setIsResetting(true);
     try {
-      const allDocs = await localResponsesDB.allDocs();
+      const allDocs = await finalDB.allDocs();
       const deleteDocs = allDocs.rows.map(row => ({
         _id: row.id,
         _rev: row.value.rev,
         _deleted: true,
       }));
-      await localResponsesDB.bulkDocs(deleteDocs);
+      await finalDB.bulkDocs(deleteDocs);
       setResponses([]); // Actualizar el estado responses a un array vacío
       setCurrentQuestionIndex(0); // Reiniciar el índice de la pregunta actual
       alert('Base de datos restablecida con éxito.');

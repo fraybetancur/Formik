@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AppBar, Tabs, Tab, Box, Grid, TextField, Avatar, Button, MenuItem, Typography } from '@mui/material';
 
-const ParticipantDetails = ({ participant, onSave, onCancel }) => {
+const ParticipantDetails = ({ participant, onSave, onBack }) => {
   const [selectedTab, setSelectedTab] = useState(0);
   const [formData, setFormData] = useState(participant);
 
@@ -41,8 +41,8 @@ const ParticipantDetails = ({ participant, onSave, onCancel }) => {
         <Button variant="contained" color="primary" onClick={handleSave} style={{ marginRight: '8px' }}>
           Save Case Member
         </Button>
-        <Button variant="outlined" onClick={onCancel}>
-          Cancel
+        <Button variant="outlined" onClick={onBack}>
+          Back
         </Button>
       </Box>
     </Box>
