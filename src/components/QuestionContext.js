@@ -35,6 +35,7 @@ const remoteResponsesDB = new PouchDB(`${process.env.REACT_APP_CLOUDANT_URL}/res
 export const QuestionContext = createContext();
 
 export const QuestionProvider = ({ children }) => {
+  const [currentComponent, setCurrentComponent] = useState('ParticipantList'); // Componente inicial
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [questions, setQuestions] = useState([]);
   const [choices, setChoices] = useState([]);
@@ -157,7 +158,9 @@ export const QuestionProvider = ({ children }) => {
       syncData, 
       handleUpload,
       handleReset,
-      error, 
+      error,
+      currentComponent, // Proveer el componente actual
+      setCurrentComponent, // Proveer la función para cambiar el componente
     }}>
       {children}
     </QuestionContext.Provider>
@@ -168,4 +171,3 @@ export const QuestionProvider = ({ children }) => {
 export { localResponsesDB };
 // Agrega esto al final del archivo QuestionContext.js para exportar la base de datos finalDB
 export { finalDB };
-

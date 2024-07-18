@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { css } from '@emotion/react';
 import { finalDB } from './QuestionContext'; // Importa finalDB
-import { TextField, List, ListItem, ListItemText, Avatar, CircularProgress } from '@mui/material';
+import { TextField, List, ListItem, ListItemText, Avatar, CircularProgress, Card, CardContent } from '@mui/material';
+import ParticipantDetails from './ParticipantDetails'; // Importa el nuevo componente
 
-const ParticipantList = ({ onSelectParticipant }) => {
+const ParticipantList = () => {
   const [participants, setParticipants] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [selectedParticipant, setSelectedParticipant] = useState(null); // Estado para el participante seleccionado
 
   useEffect(() => {
     const fetchParticipants = async () => {
@@ -40,30 +42,48 @@ const ParticipantList = ({ onSelectParticipant }) => {
     (participant.documentNumber && participant.documentNumber.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  const handleSelectParticipant = (participant) => {
+    setSelectedParticipant(participant);
+  };
+
+  const handleBack = () => {
+    setSelectedParticipant(null);
+  };
+
   return (
     <div css={containerStyle}>
-      <TextField
-        label="Buscar Participante"
-        variant="outlined"
-        fullWidth
-        value={searchTerm}
-        onChange={e => setSearchTerm(e.target.value)}
-        css={searchStyle}
-      />
-      {loading ? (
-        <CircularProgress css={loadingStyle} />
+      {selectedParticipant ? (
+        <ParticipantDetails participant={selectedParticipant} onBack={handleBack} />
       ) : (
-        <List>
-          {filteredParticipants.map(participant => (
-            <ListItem key={participant.CaseID} button onClick={() => onSelectParticipant(participant)}>
-              <Avatar src={participant.photo} css={avatarStyle} />
-              <ListItemText 
-                primary={participant.name} 
-                secondary={participant.documentNumber} 
-              />
-            </ListItem>
-          ))}
-        </List>
+        <>
+          <TextField
+            label="Buscar Participante"
+            variant="outlined"
+            fullWidth
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            css={searchStyle}
+          />
+          {loading ? (
+            <CircularProgress css={loadingStyle} />
+          ) : (
+            <List>
+              {filteredParticipants.map(participant => (
+                <Card key={participant.CaseID} style={{ marginBottom: '10px' }}>
+                  <CardContent>
+                    <ListItem button onClick={() => handleSelectParticipant(participant)}>
+                      <Avatar src={participant.photo} css={avatarStyle} />
+                      <ListItemText 
+                        primary={participant.name} 
+                        secondary={participant.documentNumber} 
+                      />
+                    </ListItem>
+                  </CardContent>
+                </Card>
+              ))}
+            </List>
+          )}
+        </>
       )}
     </div>
   );

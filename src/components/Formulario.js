@@ -18,7 +18,7 @@ import CompressedImageInput from './Controls/CompressedImageInput';
 const localDB = new PouchDB('responses');
 const finalDB = new PouchDB('finalDB'); // Añadir esta línea para crear finalDB
 
-const SurveyForm = () => {
+const SurveyForm = ({ onNavigate }) => { // Asegurarse de recibir onNavigate como prop
   const { questions, choices, isLoading, isSyncing, responses, setResponses, currentQuestionIndex, setCurrentQuestionIndex, handleReset, syncData, handleUpload } = useContext(QuestionContext);
   const [answer, setAnswer] = useState('');
   const [caseID] = useState(uuidv4());
@@ -61,6 +61,11 @@ const SurveyForm = () => {
     fetchResponses();
   }, []);
 
+  useEffect(() => {
+    setCurrentQuestionIndex(0); // Establece el índice de la pregunta actual en 0 al montar el componente
+  }, [setCurrentQuestionIndex]);
+
+  
   const handleResponseChange = (value) => {
     setAnswer(value);
   };
@@ -171,8 +176,9 @@ const SurveyForm = () => {
   const handleSubmit = async () => {
     await handleNext();  // Asegura guardar la última respuesta
     await saveSurveyToFinalDB(caseID);  // Agrega esta línea
+    await handleReset();  // Llamar a handleReset para reiniciar responses en PouchDB
     alert('Encuesta completada y guardada en la base de datos final.');
-    // Opcional: puedes resetear el formulario o redirigir al usuario
+    onNavigate('ParticipantList');  // Navegar a ParticipantList
   };
 
   const getFilteredChoices = () => {
