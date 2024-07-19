@@ -9,7 +9,7 @@ const ParticipantList = ({ onNavigate }) => {
   const [participants, setParticipants] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-  const [selectedParticipant, setSelectedParticipant] = useState(null);
+  const [selectedParticipantId, setSelectedParticipantId] = useState(null); // Cambiado a participantId
   const { resetTrigger } = useContext(QuestionContext);
 
   const fetchParticipants = async () => {
@@ -43,11 +43,11 @@ const ParticipantList = ({ onNavigate }) => {
   );
 
   const handleSelectParticipant = (participant) => {
-    setSelectedParticipant(participant);
+    setSelectedParticipantId(participant.CaseID); // Guardar el ID del participante seleccionado
   };
 
   const handleBack = () => {
-    setSelectedParticipant(null);
+    setSelectedParticipantId(null);
   };
 
   const handleAddParticipant = () => {
@@ -56,8 +56,8 @@ const ParticipantList = ({ onNavigate }) => {
 
   return (
     <div css={containerStyle}>
-      {selectedParticipant ? (
-        <ParticipantDetails participant={selectedParticipant} onBack={handleBack} />
+      {selectedParticipantId ? (
+        <ParticipantDetails participantId={selectedParticipantId} onBack={handleBack} />
       ) : (
         <>
           <TextField

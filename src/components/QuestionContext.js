@@ -45,7 +45,6 @@ export const QuestionProvider = ({ children }) => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
-  const [resetTrigger, setResetTrigger] = useState(false); // Añadir un estado para disparar el reset
   const [error, setError] = useState(null);
 
   const loadQuestions = useCallback(async () => {
@@ -101,23 +100,37 @@ export const QuestionProvider = ({ children }) => {
   const handleUpload = async () => {
     setIsUploading(true);
     try {
-      const allDocs = await finalDB.allDocs({ include_docs: true, attachments: true });
-      for (const doc of allDocs.rows) {
-        const { _id, _rev, ...docWithoutIdRev } = doc.doc;
-        const docWithAttachments = { ...docWithoutIdRev, _attachments: doc.doc._attachments };
-        await remoteResponsesDB.put({
-          _id,
-          ...docWithAttachments,
+        const allDocs = await finalDB.allDocs({ include_docs: true, attachments: true });
+        
+        // Agrupar los documentos en un lote
+        const batch = allDocs.rows.map(doc => {
+            const { _id, _rev, ...docWithoutIdRev } = doc.doc;
+            return {
+                _id,
+                ...docWithoutIdRev,
+                _attachments: doc.doc._attachments
+            };
         });
-      }
-      alert('Respuestas subidas con éxito a Cloudant');
+
+        // Subir el lote de documentos
+        const response = await remoteResponsesDB.bulkDocs(batch);
+        
+        // Verificar el resultado de la operación
+        const hasErrors = response.some(res => res.error);
+        if (hasErrors) {
+            console.error("Error subiendo algunas respuestas a Cloudant:", response);
+            alert('Error subiendo algunas respuestas a Cloudant.');
+        } else {
+            alert('Respuestas subidas con éxito a Cloudant');
+        }
     } catch (error) {
-      console.error("Error subiendo las respuestas a Cloudant:", error);
-      alert('Error subiendo las respuestas a Cloudant.');
+        console.error("Error subiendo las respuestas a Cloudant:", error);
+        alert('Error subiendo las respuestas a Cloudant.');
     } finally {
-      setIsUploading(false);
+        setIsUploading(false);
     }
-  };
+};
+
 
   const handleReset = async () => {
     setIsResetting(true);
@@ -129,7 +142,6 @@ export const QuestionProvider = ({ children }) => {
         _deleted: true,
       }));
       await finalDB.bulkDocs(deleteDocs);
-      setResetTrigger(!resetTrigger); // Dispara el reset al cambiar el estado
       alert('Base de datos restablecida con éxito.');
     } catch (error) {
       console.error('Error restableciendo la base de datos:', error);
@@ -158,6 +170,28 @@ export const QuestionProvider = ({ children }) => {
     loadQuestions();
   }, [loadQuestions]);
 
+  const updateParticipant = async (participantId, updatedData) => {
+    try {
+      const participantDoc = await finalDB.get(participantId);
+      const updatedDoc = {
+        ...participantDoc,
+        responses: participantDoc.responses.map(response => ({
+          ...response,
+          Response: updatedData[response.QuestionID] || response.Response,
+        })),
+      };
+      // Añadir o actualizar case notes
+      if (updatedData.caseNotes) {
+        updatedDoc.caseNotes = updatedDoc.caseNotes ? [...updatedDoc.caseNotes, ...updatedData.caseNotes] : updatedData.caseNotes;
+      }
+      await finalDB.put(updatedDoc);
+      alert('Participant data updated successfully.');
+    } catch (error) {
+      console.error('Error updating participant data:', error);
+      alert('Error updating participant data.');
+    }
+  };
+
   return (
     <QuestionContext.Provider value={{ 
       questions, 
@@ -174,7 +208,7 @@ export const QuestionProvider = ({ children }) => {
       handleUpload,
       handleReset,
       handleResetResponses,
-      resetTrigger, // Proveer el resetTrigger
+      updateParticipant,
       error,
       currentComponent, 
       setCurrentComponent, 
