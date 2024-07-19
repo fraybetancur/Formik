@@ -1,6 +1,8 @@
+/** @jsxImportSource @emotion/react */
 import React, { useState, useEffect, useContext } from 'react';
-import { AppBar, Tabs, Tab, Box, Grid, TextField, Avatar, Button, MenuItem, Typography, IconButton } from '@mui/material';
+import { AppBar, Tabs, Tab, Box, Grid, TextField, Avatar, Button, MenuItem, Typography, IconButton, Divider } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { finalDB, QuestionContext } from './QuestionContext';
 import { css } from '@emotion/react';
 
@@ -61,13 +63,20 @@ const ParticipantDetails = ({ participantId, onBack }) => {
   };
 
   const handleSave = () => {
+    const newCaseNote = { text: caseNotes, date: new Date().toISOString(), id: Date.now() };
     const updatedData = {
       ...formData,
-      caseNotes: caseNotes ? [{ text: caseNotes, date: new Date().toISOString() }, ...caseNotesHistory] : [...caseNotesHistory],
+      caseNotes: caseNotes ? [newCaseNote, ...caseNotesHistory] : [...caseNotesHistory],
     };
     updateParticipant(participantId, updatedData);
     setCaseNotes('');
-    setSelectedTab(0);
+    setCaseNotesHistory([newCaseNote, ...caseNotesHistory]); // Actualizar el historial inmediatamente
+  };
+
+  const handleDelete = (id) => {
+    const updatedNotes = caseNotesHistory.filter(note => note.id !== id);
+    setCaseNotesHistory(updatedNotes);
+    updateParticipant(participantId, { ...formData, caseNotes: updatedNotes });
   };
 
   if (loading) {
@@ -102,7 +111,7 @@ const ParticipantDetails = ({ participantId, onBack }) => {
         </Box>
       </TabPanel>
       <TabPanel value={selectedTab} index={1}>
-        <CaseNotesTab caseNotes={caseNotes} setCaseNotes={setCaseNotes} caseNotesHistory={caseNotesHistory} handleSave={handleSave} />
+        <CaseNotesTab caseNotes={caseNotes} setCaseNotes={setCaseNotes} caseNotesHistory={caseNotesHistory} handleSave={handleSave} handleDelete={handleDelete} />
       </TabPanel>
       {/* Similar TabPanels for other sections */}
     </Box>
@@ -201,7 +210,7 @@ const BiographicTab = ({ formData, handleChange, extraFields }) => (
   </Box>
 );
 
-const CaseNotesTab = ({ caseNotes, setCaseNotes, caseNotesHistory, handleSave }) => (
+const CaseNotesTab = ({ caseNotes, setCaseNotes, caseNotesHistory, handleSave, handleDelete }) => (
   <Box>
     <TextField
       label="Add Case Note"
@@ -220,11 +229,15 @@ const CaseNotesTab = ({ caseNotes, setCaseNotes, caseNotesHistory, handleSave })
     </Typography>
     <Box>
       {caseNotesHistory.map((note, index) => (
-        <Box key={index} style={{ marginBottom: '8px' }}>
+        <Box key={note.id} style={{ marginBottom: '8px', position: 'relative' }}>
           <Typography variant="body2" color="textSecondary">
             {new Date(note.date).toLocaleString()}
           </Typography>
           <Typography variant="body1">{note.text}</Typography>
+          <IconButton onClick={() => handleDelete(note.id)} color="#08c" style={{ position: 'absolute', right: 0, top: 0 }}>
+            <DeleteIcon />
+          </IconButton>
+          <Divider style={{ marginTop: '8px' }} />
         </Box>
       ))}
     </Box>
@@ -240,8 +253,8 @@ const styles = {
     }
   `,
   selectedTab: css`
-    color: white;
-    background-color: #115293;
+    color: #1976d2;
+    background-color: white;
   `
 };
 

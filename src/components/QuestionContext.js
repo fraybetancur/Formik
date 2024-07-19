@@ -129,7 +129,7 @@ export const QuestionProvider = ({ children }) => {
     } finally {
         setIsUploading(false);
     }
-};
+  };
 
 
   const handleReset = async () => {
@@ -179,11 +179,8 @@ export const QuestionProvider = ({ children }) => {
           ...response,
           Response: updatedData[response.QuestionID] || response.Response,
         })),
+        caseNotes: updatedData.caseNotes || participantDoc.caseNotes || [],
       };
-      // Añadir o actualizar case notes
-      if (updatedData.caseNotes) {
-        updatedDoc.caseNotes = updatedDoc.caseNotes ? [...updatedDoc.caseNotes, ...updatedData.caseNotes] : updatedData.caseNotes;
-      }
       await finalDB.put(updatedDoc);
       alert('Participant data updated successfully.');
     } catch (error) {
