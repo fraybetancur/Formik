@@ -12,10 +12,11 @@ const ParticipantList = ({ onNavigate }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [selectedParticipantId, setSelectedParticipantId] = useState(null);
-  const { resetTrigger } = useContext(QuestionContext);
+  const { shouldReloadParticipants } = useContext(QuestionContext); // Usar shouldReloadParticipants del contexto
 
   const fetchParticipants = async () => {
     try {
+      setLoading(true); // Añadido para mostrar el indicador de carga correctamente
       const allDocs = await finalDB.allDocs({ include_docs: true });
       const fetchedParticipants = allDocs.rows.reduce((acc, row) => {
         if (row.doc.responses) {
@@ -44,7 +45,7 @@ const ParticipantList = ({ onNavigate }) => {
 
   useEffect(() => {
     fetchParticipants();
-  }, [resetTrigger]);
+  }, [shouldReloadParticipants]); // Dependencia en shouldReloadParticipants para forzar la recarga
 
   const filteredParticipants = participants.filter(participant =>
     (participant.name && participant.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -95,7 +96,7 @@ const ParticipantList = ({ onNavigate }) => {
               <List>
                 {filteredParticipants.map(participant => (
                   <Card key={participant.CaseID} css={participantListStyles.cardStyle}>
-                    <CardContent>
+                    <CardContent css={participantListStyles.cardContentStyle}>
                       <ListItem button onClick={() => handleSelectParticipant(participant)}>
                         <div css={participantListStyles.avatarContainerStyle}>
                           <Avatar src={participant.photo} css={participantListStyles.avatarStyle} />
@@ -188,10 +189,12 @@ const participantListStyles = {
   `,
   cardStyle: css`
     margin-bottom: 16px;
-    padding: 0px;
     border-radius: 12px;
     background-color: #f3f3f3;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  `,
+  cardContentStyle: css`
+    padding: 0px !important;
   `,
   infoStyle: css`
     flex: 1;

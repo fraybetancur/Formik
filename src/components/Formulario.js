@@ -4,7 +4,7 @@ import { css } from '@emotion/react';
 import PouchDB from 'pouchdb-browser';
 import { v4 as uuidv4 } from 'uuid';
 import { useSwipeable } from 'react-swipeable';
-import { QuestionContext, localResponsesDB } from './QuestionContext';
+import { QuestionContext } from './QuestionContext';
 import TextArea from './Controls/TextArea';
 import DateInput from './Controls/DateInput';
 import RadioGroup from './Controls/RadioGroup';
@@ -14,15 +14,18 @@ import Dropdown from './Controls/Dropdown';
 import DropdownMultiple from './Controls/DropdownMultiple';
 import TextInput from './Controls/TextInput';
 import CompressedImageInput from './Controls/CompressedImageInput';
-import ProgressBar from './ProgressBar'; // Importar el componente de barra de progreso
+import ProgressBar from './ProgressBar';
+import PDFViewer from './PDFViewer';
 
-const localDB = new PouchDB('responses');
+const localResponsesDB = new PouchDB('responses');
 const finalDB = new PouchDB('finalDB');
 
 const SurveyForm = ({ onNavigate }) => {
-  const { questions, choices, isLoading, isSyncing, responses, setResponses, currentQuestionIndex, setCurrentQuestionIndex, handleResetResponses, syncData, handleUpload } = useContext(QuestionContext);
+  const { questions, choices, isLoading, isSyncing, responses, setResponses, currentQuestionIndex, setCurrentQuestionIndex, syncData, handleUpload } = useContext(QuestionContext);
   const [answer, setAnswer] = useState('');
   const [caseID] = useState(uuidv4());
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [currentFile, setCurrentFile] = useState(null);
 
   const handleImageUpload = async (imageFile, previewDataUrl) => {
     const responseId = uuidv4();
@@ -40,20 +43,58 @@ const SurveyForm = ({ onNavigate }) => {
     };
 
     try {
-      await localDB.put(imageResponse);
-      const doc = await localDB.get(responseId);
-      await localDB.putAttachment(doc._id, 'image.jpg', doc._rev, imageFile, 'image/jpeg');
+      await localResponsesDB.put(imageResponse);
+      const doc = await localResponsesDB.get(responseId);
+      await localResponsesDB.putAttachment(doc._id, 'image.jpg', doc._rev, imageFile, 'image/jpeg');
       setResponses([...responses, imageResponse]);
+      console.log('Imagen guardada:', imageResponse);
     } catch (error) {
       console.error("Error al guardar la imagen en PouchDB:", error);
+    }
+  };
+
+  const handleFileChange = async (file) => {
+    console.log('File selected:', file);
+    const fileUrl = URL.createObjectURL(file);
+    setPreviewUrl(fileUrl);
+    console.log('Generated preview URL:', fileUrl);
+
+    const responseId = uuidv4();
+    const fileResponse = {
+      _id: responseId,
+      type: file.type.split('/')[0],
+      CaseID: caseID,
+      ParentCaseID: caseID,
+      CaseDetails: '',
+      QuestionID: questions[currentQuestionIndex].QuestionID,
+      Index: currentQuestionIndex,
+      ResponseID: responseId,
+      Response: '',
+      Url: fileUrl,
+    };
+
+    try {
+      console.log('Saving file response to PouchDB...');
+      await localResponsesDB.put(fileResponse);
+      const doc = await localResponsesDB.get(responseId);
+      console.log('File response saved:', fileResponse);
+
+      console.log('Saving file attachment to PouchDB...');
+      await localResponsesDB.putAttachment(doc._id, file.name, doc._rev, file, file.type);
+      setResponses([...responses, fileResponse]);
+      console.log('Archivo guardado:', fileResponse);
+    } catch (error) {
+      console.error("Error al guardar el archivo en PouchDB:", error);
     }
   };
 
   useEffect(() => {
     const fetchResponses = async () => {
       try {
-        const allDocs = await localDB.allDocs({ include_docs: true });
+        console.log('Fetching responses from PouchDB...');
+        const allDocs = await localResponsesDB.allDocs({ include_docs: true });
         setResponses(allDocs.rows.map(row => row.doc));
+        console.log('Respuestas obtenidas de PouchDB:', allDocs.rows.map(row => row.doc));
       } catch (error) {
         console.error("Error fetching responses from PouchDB:", error);
       }
@@ -73,11 +114,11 @@ const SurveyForm = ({ onNavigate }) => {
   const saveOrUpdateResponse = async (response, retries = 3) => {
     for (let i = 0; i < retries; i++) {
       try {
-        const existingResponse = await localDB.get(response._id).catch(err => null);
+        const existingResponse = await localResponsesDB.get(response._id).catch(err => null);
         if (existingResponse) {
           response._rev = existingResponse._rev;
         }
-        await localDB.put(response);
+        await localResponsesDB.put(response);
         setResponses(prevResponses => {
           const existingResponseIndex = prevResponses.findIndex(res => res._id === response._id);
           if (existingResponseIndex > -1) {
@@ -86,10 +127,11 @@ const SurveyForm = ({ onNavigate }) => {
             return [...prevResponses, response];
           }
         });
+        console.log('Respuesta guardada:', response);
         return;
       } catch (error) {
         if (error.status === 409) {
-          const existingResponse = await localDB.get(response._id);
+          const existingResponse = await localResponsesDB.get(response._id);
           response._rev = existingResponse._rev;
         } else {
           console.error("Error guardando la respuesta en PouchDB:", error);
@@ -103,10 +145,13 @@ const SurveyForm = ({ onNavigate }) => {
   const saveResponse = async (response) => {
     try {
       await saveOrUpdateResponse(response);
+      console.log("Respuesta guardada:", response);
     } catch (error) {
       console.error("Error final al guardar la respuesta en PouchDB:", error);
     }
   };
+
+  const generateResponseId = (caseID, questionID) => `${caseID}-${questionID}-${uuidv4()}`;
 
   const handleNext = async () => {
     if (questions[currentQuestionIndex].Required === 'true') {
@@ -118,7 +163,7 @@ const SurveyForm = ({ onNavigate }) => {
         return;
       }
     }
-
+  
     if ((typeof answer === 'string' && answer.trim() === '') || (Array.isArray(answer) && answer.length === 0)) {
       console.log('No se guarda respuesta vacía.');
       if (currentQuestionIndex < questions.length - 1) {
@@ -128,7 +173,7 @@ const SurveyForm = ({ onNavigate }) => {
     }
 
     const response = {
-      _id: `${caseID}-${questions[currentQuestionIndex].QuestionID}`,
+      _id: generateResponseId(caseID, questions[currentQuestionIndex].QuestionID),
       CaseID: caseID,
       ParentCaseID: caseID,
       CaseDetails: '',
@@ -137,9 +182,10 @@ const SurveyForm = ({ onNavigate }) => {
       ResponseID: uuidv4(),
       Response: answer,
     };
-
+  
     await saveResponse(response);
     setAnswer('');
+    setPreviewUrl('');
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
@@ -175,7 +221,6 @@ const SurveyForm = ({ onNavigate }) => {
   const handleSubmit = async () => {
     await handleNext();  // Asegura guardar la última respuesta
     await saveSurveyToFinalDB(caseID);  // Agrega esta línea
-    await handleResetResponses();  // Llamar a handleResetResponses para reiniciar responses en PouchDB
     alert('Encuesta completada y guardada en la base de datos final.');
     onNavigate('ParticipantList');  // Navegar a ParticipantList
   };
@@ -315,14 +360,40 @@ const SurveyForm = ({ onNavigate }) => {
                   <TextInput value={answer} onChange={(e) => handleResponseChange(e.target.value)} />
                 )}
                 {['Audio', 'Cámara', 'Datos adjuntos', 'Visor de PDF'].includes(currentQuestion.ResponseType) && (
-                  <TextInput
-                    type="file"
-                    accept={currentQuestion.ResponseType === 'Cargar imagen' ? 'image/*' :
-                            currentQuestion.ResponseType === 'Audio' ? 'audio/*' :
-                            currentQuestion.ResponseType === 'Cámara' ? 'video/*' :
-                            currentQuestion.ResponseType === 'Visor de PDF' ? 'application/pdf' : ''}
-                    onChange={(e) => handleResponseChange(e.target.files[0])}
-                  />
+                  <>
+                    <input
+                      type="file"
+                      accept={currentQuestion.ResponseType === 'Datos adjuntos' ? 'application/*' :
+                              currentQuestion.ResponseType === 'Audio' ? 'audio/*' :
+                              currentQuestion.ResponseType === 'Cámara' ? 'video/*' :
+                              currentQuestion.ResponseType === 'Visor de PDF' ? 'application/pdf' : ''}
+                      onChange={(e) => handleFileChange(e.target.files[0])}
+                    />
+                    {previewUrl && (
+                      <div>
+                        {currentQuestion.ResponseType === 'Audio' && (
+                          <audio controls>
+                            <source src={previewUrl} type="audio/*" />
+                            Your browser does not support the audio element.
+                          </audio>
+                        )}
+                        {currentQuestion.ResponseType === 'Cámara' && (
+                          <video controls width="250">
+                            <source src={previewUrl} type="video/*" />
+                            Your browser does not support the video element.
+                          </video>
+                        )}
+                        {currentQuestion.ResponseType === 'Datos adjuntos' && (
+                          <a href={previewUrl} download="attachment">Download Attachment</a>
+                        )}
+                        {currentQuestion.ResponseType === 'Visor de PDF' && (
+                          <div css={{ height: '500px' }}>
+                            <PDFViewer fileUrl={previewUrl} />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
                 {currentQuestion && currentQuestion.ResponseType === 'Cargar imagen' && (
                   <CompressedImageInput onImageUpload={handleImageUpload} />
@@ -411,14 +482,14 @@ const buttonContainerStyle = css`
 
 const buttonStyle = css`
   padding: 10px 20px;
-  background-color: #007BFF !important;
+  background-color: #007BFF;
   color: white;
   border: none;
   border-radius: 5px;
   cursor: pointer;
 
   &:disabled {
-    background-color: #cccccc !important;
+    background-color: #cccccc;
     cursor: not-allowed;
   }
 `;
@@ -429,14 +500,11 @@ const navigationContainerStyle = css`
   justify-content: space-between;
   width: 100%;
   padding: 10px;
-  //background-color: white;
-  //box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   z-index: 1000;
 `;
 
 const navigationButtonStyle = css`
   padding: 10px 20px;
-  //background-color: #08c;
   color: #08c;
   background: none;
   border: none;
@@ -444,9 +512,9 @@ const navigationButtonStyle = css`
   cursor: pointer;
 
   &:disabled {
-    //background-color: #08c;
     cursor: not-allowed;
   }
 `;
 
+export { localResponsesDB };
 export default SurveyForm;

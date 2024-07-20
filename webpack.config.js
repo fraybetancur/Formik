@@ -1,8 +1,7 @@
+// webpack.config.js
 const path = require('path');
 
 module.exports = {
-  // Aquí va tu configuración existente de Webpack...
-  
   resolve: {
     fallback: {
       "path": require.resolve("path-browserify"),
@@ -11,5 +10,13 @@ module.exports = {
       "stream": require.resolve("stream-browserify"),
       "url": require.resolve("url")
     }
+  },
+  module: {
+    rules: [
+      {
+        test: /pdf\.worker\.min\.js$/,
+        use: { loader: 'worker-loader' }
+      }
+    ]
   }
 };

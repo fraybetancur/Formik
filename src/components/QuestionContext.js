@@ -1,6 +1,9 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import PouchDB from 'pouchdb-browser';
 import PouchDBFind from 'pouchdb-find';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { localResponsesDB } from './Formulario';
 
 PouchDB.plugin(PouchDBFind);
 
@@ -22,12 +25,19 @@ const remoteChoicesDB = new PouchDB(`${process.env.REACT_APP_CLOUDANT_URL}/choic
   },
 });
 
-const localResponsesDB = new PouchDB('responses');
 const remoteResponsesDB = new PouchDB(`${process.env.REACT_APP_CLOUDANT_URL}/responses`, {
   adapter: 'http',
   auth: {
     username: process.env.REACT_APP_CLOUDANT_APIKEY_RESPONSES,
     password: process.env.REACT_APP_CLOUDANT_PASSWORD_RESPONSES,
+  },
+});
+
+const remoteBackupDB = new PouchDB(`${process.env.REACT_APP_CLOUDANT_URL}/backup`, {
+  adapter: 'http',
+  auth: {
+    username: process.env.REACT_APP_CLOUDANT_APIKEY_BACKUP,
+    password: process.env.REACT_APP_CLOUDANT_PASSWORD_BACKUP,
   },
 });
 
@@ -46,6 +56,7 @@ export const QuestionProvider = ({ children }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [error, setError] = useState(null);
+  const [resetTrigger, setResetTrigger] = useState(false);
 
   const loadQuestions = useCallback(async () => {
     try {
@@ -83,15 +94,32 @@ export const QuestionProvider = ({ children }) => {
       setIsSyncing(true);
       await syncWithRetry(localSurveyDB, remoteSurveyDB);
       await syncWithRetry(localChoicesDB, remoteChoicesDB);
-      await syncWithRetry(localResponsesDB, remoteResponsesDB);
       await syncWithRetry(finalDB, remoteResponsesDB); // Sincroniza finalDB con remoteResponsesDB
+      await syncWithRetry(localResponsesDB, remoteBackupDB);
       await loadQuestions();
       setResponses([]);
       setCurrentQuestionIndex(0);
-      alert('Datos sincronizados exitosamente');
+      toast.success('Datos sincronizados exitosamente');
     } catch (err) {
       console.error("Error durante la sincronización:", err);
       setError(err.message);
+      toast.error('Error durante la sincronización.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleBackupSync = async () => {
+    try {
+      console.log("Iniciando sincronización...");
+      setIsSyncing(true);
+      await syncWithRetry(localResponsesDB, remoteBackupDB);
+      await loadQuestions();
+      toast.success('Datos sincronizados con el backup exitosamente');
+    } catch (err) {
+      console.error("Error durante la sincronización con el backup:", err);
+      setError(err.message);
+      toast.error('Error durante la sincronización con el backup.');
     } finally {
       setIsSyncing(false);
     }
@@ -100,37 +128,30 @@ export const QuestionProvider = ({ children }) => {
   const handleUpload = async () => {
     setIsUploading(true);
     try {
-        const allDocs = await finalDB.allDocs({ include_docs: true, attachments: true });
-        
-        // Agrupar los documentos en un lote
-        const batch = allDocs.rows.map(doc => {
-            const { _id, _rev, ...docWithoutIdRev } = doc.doc;
-            return {
-                _id,
-                ...docWithoutIdRev,
-                _attachments: doc.doc._attachments
-            };
-        });
+      const allDocs = await finalDB.allDocs({ include_docs: true, attachments: true });
+      const batch = allDocs.rows.map(doc => {
+        const { _id, _rev, ...docWithoutIdRev } = doc.doc;
+        return {
+          ...docWithoutIdRev,
+          _attachments: doc.doc._attachments
+        };
+      });
 
-        // Subir el lote de documentos
-        const response = await remoteResponsesDB.bulkDocs(batch);
-        
-        // Verificar el resultado de la operación
-        const hasErrors = response.some(res => res.error);
-        if (hasErrors) {
-            console.error("Error subiendo algunas respuestas a Cloudant:", response);
-            alert('Error subiendo algunas respuestas a Cloudant.');
-        } else {
-            alert('Respuestas subidas con éxito a Cloudant');
-        }
+      const response = await remoteResponsesDB.bulkDocs(batch);
+      const hasErrors = response.some(res => res.error);
+      if (hasErrors) {
+        console.error("Error subiendo algunas respuestas a Cloudant:", response);
+        toast.error('Error subiendo algunas respuestas a Cloudant.');
+      } else {
+        toast.success('Respuestas subidas con éxito a Cloudant');
+      }
     } catch (error) {
-        console.error("Error subiendo las respuestas a Cloudant:", error);
-        alert('Error subiendo las respuestas a Cloudant.');
+      console.error("Error subiendo las respuestas a Cloudant:", error);
+      toast.error('Error subiendo las respuestas a Cloudant.');
     } finally {
-        setIsUploading(false);
+      setIsUploading(false);
     }
   };
-
 
   const handleReset = async () => {
     setIsResetting(true);
@@ -142,27 +163,12 @@ export const QuestionProvider = ({ children }) => {
         _deleted: true,
       }));
       await finalDB.bulkDocs(deleteDocs);
-      alert('Base de datos restablecida con éxito.');
+      toast.success('Base de datos restablecida con éxito.');
     } catch (error) {
       console.error('Error restableciendo la base de datos:', error);
-      alert('Error restableciendo la base de datos.');
+      toast.error('Error restableciendo la base de datos.');
     } finally {
       setIsResetting(false);
-    }
-  };
-
-  const handleResetResponses = async () => {
-    try {
-      const allDocs = await localResponsesDB.allDocs();
-      const deleteDocs = allDocs.rows.map(row => ({
-        _id: row.id,
-        _rev: row.value.rev,
-        _deleted: true,
-      }));
-      await localResponsesDB.bulkDocs(deleteDocs);
-      setResponses([]);
-    } catch (error) {
-      console.error('Error restableciendo las respuestas:', error);
     }
   };
 
@@ -182,10 +188,10 @@ export const QuestionProvider = ({ children }) => {
         caseNotes: updatedData.caseNotes || participantDoc.caseNotes || [],
       };
       await finalDB.put(updatedDoc);
-      alert('Participant data updated successfully.');
+      toast.success('Datos del participante actualizados correctamente.');
     } catch (error) {
-      console.error('Error updating participant data:', error);
-      alert('Error updating participant data.');
+      console.error('Error actualizando los datos del participante:', error);
+      toast.error('Error actualizando los datos del participante.');
     }
   };
 
@@ -204,11 +210,13 @@ export const QuestionProvider = ({ children }) => {
       syncData, 
       handleUpload,
       handleReset,
-      handleResetResponses,
+      handleBackupSync,
       updateParticipant,
       error,
       currentComponent, 
-      setCurrentComponent, 
+      setCurrentComponent,
+      resetTrigger,
+      setResetTrigger,
     }}>
       {children}
     </QuestionContext.Provider>

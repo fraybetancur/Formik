@@ -100,7 +100,7 @@ const DateInput = ({ value, onChange }) => {
               onChange={({ target: { value } }) => changeYear(value)}
               style={{ marginRight: '10px' }}
             >
-              {Array.from({ length: 50 }, (_, i) => i + 1970).map(year => (
+              {Array.from({ length: 70 }, (_, i) => i + 1970).map(year => (
                 <option key={year} value={year}>
                   {year}
                 </option>

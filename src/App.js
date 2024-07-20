@@ -10,6 +10,7 @@ import SubHeader from './components/SubHeader';
 import Formulario from './components/Formulario';
 import ParticipantList from './components/ParticipantList';
 import ParticipantDetails from './components/ParticipantDetails';
+import PDFUploader from './components/PDFUploader';
 
 const MyEnhancedForm = lazy(() => import('./components/formik-demo'));
 const ExcelUploader = lazy(() => import('./components/ExcelUploader'));
@@ -64,7 +65,14 @@ const AppContent = () => {
   };
 
   const handleSubHeaderToggle = () => {
-    setIsSubHeaderVisible(!isSubHeaderVisible);
+    if (isSubHeaderVisible) {
+      setIsSubHeaderVisible(false);
+    } else {
+      setIsSubHeaderVisible(true);
+      setTimeout(() => {
+        setIsSubHeaderVisible(false);
+      }, 5000);
+    }
   };
 
   const handleReloadClick = () => {
@@ -97,6 +105,8 @@ const AppContent = () => {
         return <ParticipantList onNavigate={handleNavigate} />;
       case 'ParticipantDetails':
         return <ParticipantDetails onNavigate={handleNavigate} />;
+      case 'PDFUploader':
+        return <PDFUploader onNavigate={handleNavigate} />;
       default:
         return <ParticipantList onNavigate={handleNavigate} />;
     }
@@ -109,10 +119,9 @@ const AppContent = () => {
         <Header 
           onMenuToggle={handleMenuToggle} 
           onRightButtonClick={handleSubHeaderToggle} 
-          onReloadClick={handleReloadClick} // Añadir la función de recarga
           headerText="DM SURVEYS" 
         />
-        {isSubHeaderVisible && <SubHeader />}
+        {isSubHeaderVisible && <SubHeader onReloadClick={handleReloadClick} />} {/* Pasar la función de recarga */}
         <SideMenu isOpen={isMenuOpen} onClose={handleMenuToggle} onNavigate={handleNavigate} />
         <main css={mainContentStyles}>
           <Suspense fallback={<div>Cargando...</div>}>

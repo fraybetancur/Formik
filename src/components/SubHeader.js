@@ -6,8 +6,8 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { QuestionContext } from './QuestionContext';
 
-const SubHeader = () => {
-  const { syncData, handleUpload, handleReset, isSyncing, isUploading, isResetting } = useContext(QuestionContext);
+const SubHeader = ({ onReloadClick }) => {
+  const { syncData, handleUpload, handleReset, handleBackupSync, isSyncing, isUploading, isResetting } = useContext(QuestionContext);
 
   const handleSyncClick = async () => {
     try {
@@ -36,12 +36,20 @@ const SubHeader = () => {
     }
   };
 
+  const handleBackupClick = async () => {
+    try {
+      await handleBackupSync();
+      toast.success('Backup sincronizado con éxito.');
+    } catch (error) {
+      toast.error('Error al sincronizar backup.');
+    }
+  };
+
   return (
     <div css={css`
       display: flex;
       justify-content: flex-end;
       padding: 0rem;
-      
       color: black;
       margin-top: 0.5rem; /* Ajusta según la altura del header */
       width: 100%;
@@ -51,11 +59,17 @@ const SubHeader = () => {
       <button onClick={handleSyncClick} disabled={isSyncing || isUploading || isResetting} css={buttonSh}>
         <FaSyncAlt />
       </button>
+      <button onClick={onReloadClick} disabled={isSyncing || isUploading || isResetting} css={buttonSh}>
+        🔄
+      </button>
       <button onClick={handleResetClick} disabled={isSyncing || isUploading || isResetting} css={buttonSh}>
         <FaTrashAlt />
       </button>
       <button onClick={handleUploadClick} disabled={isSyncing || isUploading || isResetting} css={buttonSh}>
         <FaCloudUploadAlt />
+      </button>
+      <button onClick={handleBackupClick} disabled={isSyncing || isUploading || isResetting} css={buttonSh}>
+        📥
       </button>
     </div>
   );

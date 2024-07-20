@@ -266,7 +266,7 @@ const styles = {
     flex: 1;
     overflow-y: auto;
     padding-top: 60px;
-    padding-bottom: 60px;
+    padding-bottom: 90px;
   `,
   footer: css`
     position: fixed;
