@@ -88,32 +88,35 @@ const ParticipantDetails = ({ participantId, onBack }) => {
   }
 
   return (
-    <Box>
-      <AppBar position="static">
-        <Tabs value={selectedTab} onChange={handleTabChange}>
-          <Tab label="Biographic" css={selectedTab === 0 ? styles.selectedTab : styles.tab} />
-          <Tab label="Case Notes" css={selectedTab === 1 ? styles.selectedTab : styles.tab} />
-          {/* Add other tabs as needed */}
-        </Tabs>
-      </AppBar>
-      <TabPanel value={selectedTab} index={0}>
-        <BiographicTab formData={formData} handleChange={handleChange} extraFields={extraFields} />
-        <Box display="flex" justifyContent="flex-end" p={2}>
-          <Button variant="contained" color="primary" onClick={handleSave} style={{ marginRight: '8px' }}>
-            Save Case Member
-          </Button>
-          <Button variant="outlined" onClick={onBack}>
-            Back
-          </Button>
-          <IconButton onClick={handleAddField} color="primary">
-            <AddIcon />
-          </IconButton>
-        </Box>
-      </TabPanel>
-      <TabPanel value={selectedTab} index={1}>
-        <CaseNotesTab caseNotes={caseNotes} setCaseNotes={setCaseNotes} caseNotesHistory={caseNotesHistory} handleSave={handleSave} handleDelete={handleDelete} />
-      </TabPanel>
-      {/* Similar TabPanels for other sections */}
+    <Box css={styles.container}>
+      <Box css={styles.tabsContainer}>
+        <AppBar position="static">
+          <Tabs value={selectedTab} onChange={handleTabChange}>
+            <Tab label="Biographic" css={selectedTab === 0 ? styles.selectedTab : styles.tab} />
+            <Tab label="Case Notes" css={selectedTab === 1 ? styles.selectedTab : styles.tab} />
+            {/* Add other tabs as needed */}
+          </Tabs>
+        </AppBar>
+      </Box>
+      <Box css={styles.content}>
+        <TabPanel value={selectedTab} index={0}>
+          <BiographicTab formData={formData} handleChange={handleChange} extraFields={extraFields} />
+        </TabPanel>
+        <TabPanel value={selectedTab} index={1}>
+          <CaseNotesTab caseNotes={caseNotes} setCaseNotes={setCaseNotes} caseNotesHistory={caseNotesHistory} handleSave={handleSave} handleDelete={handleDelete} />
+        </TabPanel>
+      </Box>
+      <Box css={styles.footer}>
+        <Button variant="contained" color="primary" onClick={handleSave} style={{ marginRight: '8px' }}>
+          Save Case Member
+        </Button>
+        <Button variant="outlined" onClick={onBack}>
+          Back
+        </Button>
+        <IconButton onClick={handleAddField} color="primary">
+          <AddIcon />
+        </IconButton>
+      </Box>
     </Box>
   );
 };
@@ -245,6 +248,36 @@ const CaseNotesTab = ({ caseNotes, setCaseNotes, caseNotesHistory, handleSave, h
 );
 
 const styles = {
+  container: css`
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;!important
+    overflow: hidden;
+    
+  `,
+  tabsContainer: css`
+    position: fixed;
+    z-index: 1000;
+    width: 100%;
+    margin-top: 30px;
+  `,
+  content: css`
+    flex: 1;
+    overflow-y: auto;
+    padding-top: 60px;
+    padding-bottom: 60px;
+  `,
+  footer: css`
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+    padding: 16px;
+    background-color: white;
+    border-top: 1px solid #e0e0e0;
+  `,
   tab: css`
     color: white;
     background-color: #1976d2;
@@ -255,7 +288,7 @@ const styles = {
   selectedTab: css`
     color: #1976d2;
     background-color: white;
-  `
+  `,
 };
 
 export default ParticipantDetails;

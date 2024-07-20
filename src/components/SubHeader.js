@@ -41,7 +41,7 @@ const SubHeader = () => {
       display: flex;
       justify-content: flex-end;
       padding: 0rem;
-      background-color: #fff;
+      
       color: black;
       margin-top: 0.5rem; /* Ajusta según la altura del header */
       width: 100%;
@@ -62,7 +62,7 @@ const SubHeader = () => {
 };
 
 const buttonSh = css`
-  margin: 0.5rem;
+  margin-top: 20px;
   padding: 0.5rem;
   margin-right: 10px;
   background-color: #08c;

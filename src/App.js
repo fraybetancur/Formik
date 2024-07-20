@@ -47,10 +47,10 @@ const appStyles = css`
 
 const mainContentStyles = css`
   flex: 1;
-  padding: 1rem;
+  padding: 0rem;
 
   @media (max-width: 768px) {
-    padding: 1rem;
+    padding: 0rem;
   }
 `;
 
@@ -119,7 +119,7 @@ const AppContent = () => {
             {renderComponent()}
           </Suspense>
         </main>
-        <Footer />
+        {/* <Footer /> */}
       </div>
     </>
   );
