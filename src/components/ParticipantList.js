@@ -124,7 +124,8 @@ const ParticipantList = ({ onNavigate }) => {
 };
 
 const containerStyle = css`
-  padding: 16px;
+  padding: 6px;
+  padding-bottom: 1px !important;
   position: relative;
 `;
 
@@ -140,7 +141,7 @@ const loadingStyle = css`
 
 const gridStyle = css`
   .MuiGrid-item {
-    padding-top: 18px !important;
+    padding-top: 38px !important;
     padding-bottom: 18px !important;
   }
 `;

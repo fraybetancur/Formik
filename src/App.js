@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { Global, css } from '@emotion/react';
-import React, { useState, Suspense, lazy, useContext } from 'react';
+import React, { useState, useEffect, Suspense, lazy, useContext } from 'react';
 import SideMenu from './components/SideMenu';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -9,7 +9,7 @@ import SurveyForm from './components/Survey';
 import SubHeader from './components/SubHeader';
 import Formulario from './components/Formulario';
 import ParticipantList from './components/ParticipantList';
-import ParticipantDetails from './components/ParticipantDetails'; // Asegúrate de importar ParticipantDetails
+import ParticipantDetails from './components/ParticipantDetails';
 
 const MyEnhancedForm = lazy(() => import('./components/formik-demo'));
 const ExcelUploader = lazy(() => import('./components/ExcelUploader'));
@@ -21,7 +21,8 @@ const globalStyles = css`
     box-sizing: border-box;
   }
 
-  body {
+  html, body {
+    overscroll-behavior: contain;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
     font-size: 14px;
     line-height: 1.5;
@@ -55,7 +56,7 @@ const mainContentStyles = css`
 
 const AppContent = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isSubHeaderVisible, setIsSubHeaderVisible] = useState(false); // Estado para el SubHeader
+  const [isSubHeaderVisible, setIsSubHeaderVisible] = useState(false);
   const { currentComponent, setCurrentComponent, setCurrentQuestionIndex } = useContext(QuestionContext);
 
   const handleMenuToggle = () => {
@@ -64,6 +65,10 @@ const AppContent = () => {
 
   const handleSubHeaderToggle = () => {
     setIsSubHeaderVisible(!isSubHeaderVisible);
+  };
+
+  const handleReloadClick = () => {
+    window.location.reload();
   };
 
   const handleNavigate = (component) => {
@@ -101,7 +106,12 @@ const AppContent = () => {
     <>
       <Global styles={globalStyles} />
       <div css={appStyles}>
-        <Header onMenuToggle={handleMenuToggle} onRightButtonClick={handleSubHeaderToggle} headerText="DM SURVEYS" />
+        <Header 
+          onMenuToggle={handleMenuToggle} 
+          onRightButtonClick={handleSubHeaderToggle} 
+          onReloadClick={handleReloadClick} // Añadir la función de recarga
+          headerText="DM SURVEYS" 
+        />
         {isSubHeaderVisible && <SubHeader />}
         <SideMenu isOpen={isMenuOpen} onClose={handleMenuToggle} onNavigate={handleNavigate} />
         <main css={mainContentStyles}>

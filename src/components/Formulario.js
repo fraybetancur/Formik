@@ -4,7 +4,7 @@ import { css } from '@emotion/react';
 import PouchDB from 'pouchdb-browser';
 import { v4 as uuidv4 } from 'uuid';
 import { useSwipeable } from 'react-swipeable';
-import { QuestionContext, localResponsesDB } from './QuestionContext'; // Importa localResponsesDB
+import { QuestionContext, localResponsesDB } from './QuestionContext';
 import TextArea from './Controls/TextArea';
 import DateInput from './Controls/DateInput';
 import RadioGroup from './Controls/RadioGroup';
@@ -14,11 +14,12 @@ import Dropdown from './Controls/Dropdown';
 import DropdownMultiple from './Controls/DropdownMultiple';
 import TextInput from './Controls/TextInput';
 import CompressedImageInput from './Controls/CompressedImageInput';
+import ProgressBar from './ProgressBar'; // Importar el componente de barra de progreso
 
 const localDB = new PouchDB('responses');
-const finalDB = new PouchDB('finalDB'); // Añadir esta línea para crear finalDB
+const finalDB = new PouchDB('finalDB');
 
-const SurveyForm = ({ onNavigate }) => { // Asegurarse de recibir onNavigate como prop
+const SurveyForm = ({ onNavigate }) => {
   const { questions, choices, isLoading, isSyncing, responses, setResponses, currentQuestionIndex, setCurrentQuestionIndex, handleResetResponses, syncData, handleUpload } = useContext(QuestionContext);
   const [answer, setAnswer] = useState('');
   const [caseID] = useState(uuidv4());
@@ -62,10 +63,9 @@ const SurveyForm = ({ onNavigate }) => { // Asegurarse de recibir onNavigate com
   }, []);
 
   useEffect(() => {
-    setCurrentQuestionIndex(0); // Establece el índice de la pregunta actual en 0 al montar el componente
+    setCurrentQuestionIndex(0);
   }, [setCurrentQuestionIndex]);
 
-  
   const handleResponseChange = (value) => {
     setAnswer(value);
   };
@@ -75,7 +75,6 @@ const SurveyForm = ({ onNavigate }) => { // Asegurarse de recibir onNavigate com
       try {
         const existingResponse = await localDB.get(response._id).catch(err => null);
         if (existingResponse) {
-          // Actualizar la respuesta existente
           response._rev = existingResponse._rev;
         }
         await localDB.put(response);
@@ -201,8 +200,37 @@ const SurveyForm = ({ onNavigate }) => { // Asegurarse de recibir onNavigate com
     onSwipedRight: () => handleBack()
   });
 
+  const progress = (currentQuestionIndex + 1) / questions.length * 100;
+
   return (
     <div {...swipeHandlers} css={containerStyle}>
+      <div css={navigationContainerStyle}>
+        <button 
+          onClick={handleBack} 
+          disabled={currentQuestionIndex === 0}
+          css={navigationButtonStyle}
+        >
+          &lt;
+        </button>
+        <ProgressBar progress={progress} />
+        {currentQuestionIndex < questions.length - 1 ? (
+          <button 
+            onClick={handleNext} 
+            disabled={currentQuestion && currentQuestion.Required === 'true' && typeof answer === 'string' && answer.trim() === ''}
+            css={navigationButtonStyle}
+          >
+            &gt;
+          </button>
+        ) : (
+          <button 
+            onClick={handleSubmit}
+            css={navigationButtonStyle}
+          >
+            &gt;
+          </button>
+        )}
+      </div>
+
       {isLoading || isSyncing ? (
         <p>{isLoading ? 'Cargando preguntas...' : 'Sincronizando datos...'}</p>
       ) : (
@@ -383,14 +411,40 @@ const buttonContainerStyle = css`
 
 const buttonStyle = css`
   padding: 10px 20px;
-  background-color: #007BFF;
+  background-color: #007BFF !important;
   color: white;
   border: none;
   border-radius: 5px;
   cursor: pointer;
 
   &:disabled {
-    background-color: #cccccc;
+    background-color: #cccccc !important;
+    cursor: not-allowed;
+  }
+`;
+
+const navigationContainerStyle = css`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px;
+  //background-color: white;
+  //box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+`;
+
+const navigationButtonStyle = css`
+  padding: 10px 20px;
+  //background-color: #08c;
+  color: #08c;
+  background: none;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+
+  &:disabled {
+    //background-color: #08c;
     cursor: not-allowed;
   }
 `;

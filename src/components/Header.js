@@ -45,13 +45,13 @@ const buttonStyle = css`
   cursor: pointer;
   box-shadow: none;
   color: white;
-  margin: 0px 0;
+  margin: 0 0;
   &:focus {
     outline: none;
   }
 `;
 
-const Header = ({ onMenuToggle, onRightButtonClick, headerText }) => {
+const Header = ({ onMenuToggle, onRightButtonClick, onReloadClick, headerText }) => {
   return (
     <header css={headerStyle}>
       <Left>
@@ -65,6 +65,9 @@ const Header = ({ onMenuToggle, onRightButtonClick, headerText }) => {
       <Right>
         <button css={buttonStyle} onClick={onRightButtonClick}>
           ⚙️
+        </button>
+        <button css={buttonStyle} onClick={onReloadClick}>
+          🔄
         </button>
       </Right>
     </header>
