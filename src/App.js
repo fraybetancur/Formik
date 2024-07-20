@@ -55,10 +55,15 @@ const mainContentStyles = css`
 
 const AppContent = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSubHeaderVisible, setIsSubHeaderVisible] = useState(false); // Estado para el SubHeader
   const { currentComponent, setCurrentComponent, setCurrentQuestionIndex } = useContext(QuestionContext);
 
   const handleMenuToggle = () => {
     setIsMenuOpen(!isMenuOpen);
+  };
+
+  const handleSubHeaderToggle = () => {
+    setIsSubHeaderVisible(!isSubHeaderVisible);
   };
 
   const handleNavigate = (component) => {
@@ -96,8 +101,8 @@ const AppContent = () => {
     <>
       <Global styles={globalStyles} />
       <div css={appStyles}>
-        <Header onMenuToggle={handleMenuToggle} headerText="DM SURVEYS" />
-        <SubHeader />
+        <Header onMenuToggle={handleMenuToggle} onRightButtonClick={handleSubHeaderToggle} headerText="DM SURVEYS" />
+        {isSubHeaderVisible && <SubHeader />}
         <SideMenu isOpen={isMenuOpen} onClose={handleMenuToggle} onNavigate={handleNavigate} />
         <main css={mainContentStyles}>
           <Suspense fallback={<div>Cargando...</div>}>

@@ -140,7 +140,7 @@ const loadingStyle = css`
 
 const gridStyle = css`
   .MuiGrid-item {
-    padding-top: 8px !important;
+    padding-top: 18px !important;
     padding-bottom: 18px !important;
   }
 `;

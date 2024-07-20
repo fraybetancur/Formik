@@ -40,9 +40,12 @@ const SubHeader = () => {
     <div css={css`
       display: flex;
       justify-content: flex-end;
-      padding: 1rem;
+      padding: 0rem;
       background-color: #fff;
       color: black;
+      margin-top: 0.5rem; /* Ajusta según la altura del header */
+      width: 100%;
+      z-index: 1001; /* Debe estar por encima del contenido principal */
     `}>
       <ToastContainer />
       <button onClick={handleSyncClick} disabled={isSyncing || isUploading || isResetting} css={buttonSh}>
@@ -61,6 +64,7 @@ const SubHeader = () => {
 const buttonSh = css`
   margin: 0.5rem;
   padding: 0.5rem;
+  margin-right: 10px;
   background-color: #08c;
   color: white;
   border: none;
