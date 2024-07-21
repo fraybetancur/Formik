@@ -11,6 +11,7 @@ import Formulario from './components/Formulario';
 import ParticipantList from './components/ParticipantList';
 import ParticipantDetails from './components/ParticipantDetails';
 import PDFUploader from './components/PDFUploader';
+import FilterForm from './components/FilterForm';
 
 const MyEnhancedForm = lazy(() => import('./components/formik-demo'));
 const ExcelUploader = lazy(() => import('./components/ExcelUploader'));
@@ -107,6 +108,8 @@ const AppContent = () => {
         return <ParticipantDetails onNavigate={handleNavigate} />;
       case 'PDFUploader':
         return <PDFUploader onNavigate={handleNavigate} />;
+      case 'FilterForm':
+        return <FilterForm onNavigate={handleNavigate} />;
       default:
         return <ParticipantList onNavigate={handleNavigate} />;
     }

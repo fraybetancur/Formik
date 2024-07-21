@@ -56,7 +56,22 @@ export const QuestionProvider = ({ children }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [error, setError] = useState(null);
-  const [resetTrigger, setResetTrigger] = useState(false);
+  
+  // Nuevos estados para los parámetros de filtrado
+  const [organization, setOrganization] = useState('');
+  const [program, setProgram] = useState('');
+  const [formId, setFormId] = useState('');
+  const [location, setLocation] = useState('');
+  const [interviewer, setInterviewer] = useState('');
+
+  // Definir el estado y la función setFilters
+  const [filters, setFilters] = useState({
+    organization: '',
+    program: '',
+    formId: '',
+    location: '',
+    interviewer: '',
+  });
 
   const loadQuestions = useCallback(async () => {
     try {
@@ -201,7 +216,8 @@ export const QuestionProvider = ({ children }) => {
 
   return (
     <QuestionContext.Provider value={{ 
-      questions, 
+      questions,
+      setQuestions,
       choices, 
       responses, 
       setResponses, 
@@ -220,6 +236,13 @@ export const QuestionProvider = ({ children }) => {
       currentComponent, 
       setCurrentComponent,
       shouldReloadParticipants,
+      organization, setOrganization,
+      program, setProgram,
+      formId, setFormId,
+      location, setLocation,
+      interviewer, setInterviewer,
+      filters, // Incluye esto
+      setFilters, // Incluye esto
     }}>
       {children}
     </QuestionContext.Provider>

@@ -21,7 +21,8 @@ const localResponsesDB = new PouchDB('responses');
 const finalDB = new PouchDB('finalDB');
 
 const SurveyForm = ({ onNavigate }) => {
-  const { questions, choices, isLoading, isSyncing, responses, setResponses, currentQuestionIndex, setCurrentQuestionIndex, syncData, handleUpload } = useContext(QuestionContext);
+  const { questions, setQuestions, choices, isLoading, isSyncing, responses, setResponses, currentQuestionIndex, setCurrentQuestionIndex, syncData, handleUpload } = useContext(QuestionContext);
+  const { filters } = useContext(QuestionContext);
   const [answer, setAnswer] = useState('');
   const [caseID] = useState(uuidv4());
   const [previewUrl, setPreviewUrl] = useState('');
@@ -89,19 +90,19 @@ const SurveyForm = ({ onNavigate }) => {
   };
 
   useEffect(() => {
-    const fetchResponses = async () => {
-      try {
-        console.log('Fetching responses from PouchDB...');
-        const allDocs = await localResponsesDB.allDocs({ include_docs: true });
-        setResponses(allDocs.rows.map(row => row.doc));
-        console.log('Respuestas obtenidas de PouchDB:', allDocs.rows.map(row => row.doc));
-      } catch (error) {
-        console.error("Error fetching responses from PouchDB:", error);
-      }
+    const fetchFilteredQuestions = async () => {
+      const filteredQuestions = questions.filter(q => 
+        (!filters.organization || q.Organization === filters.organization) &&
+        (!filters.program || q.Program === filters.program) &&
+        (!filters.formId || q.FormID === filters.formId) &&
+        (!filters.location || q.Location === filters.location) &&
+        (!filters.interviewer || q.Interviewer === filters.interviewer)
+      );
+      setQuestions(filteredQuestions);
     };
-
-    fetchResponses();
-  }, []);
+    fetchFilteredQuestions();
+  }, [filters, questions, setQuestions]);
+  
 
   useEffect(() => {
     setCurrentQuestionIndex(0);

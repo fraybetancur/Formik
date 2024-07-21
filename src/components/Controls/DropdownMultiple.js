@@ -47,7 +47,7 @@ const StyledSelect = styled.select`
   }
 `;
 
-const DropdownB = ({ options, value, onChange, showSearch = false }) => {
+const DropdownMultiple = ({ options, value, onChange, showSearch = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredOptions = options.filter(option =>
@@ -81,4 +81,4 @@ const DropdownB = ({ options, value, onChange, showSearch = false }) => {
   );
 };
 
-export default DropdownB;
+export default DropdownMultiple;

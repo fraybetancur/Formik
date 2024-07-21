@@ -7,4 +7,3 @@ module.exports = {
     swSrc: 'src/service-worker.js',
   };
   
-  
