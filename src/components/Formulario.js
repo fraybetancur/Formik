@@ -445,7 +445,7 @@ const containerStyle = css`
   flex-direction: column;
   height: 73vh; /* Ajuste para descontar la altura del header y footer */
   width: 100%;
-  padding: 10px;
+  padding: 2rem;
   font-family: Arial, sans-serif;
 `;
 
@@ -481,7 +481,6 @@ const buttonContainerStyle = css`
 `;
 
 const buttonStyle = css`
-  padding: 10px 20px;
   background-color: #007BFF;
   color: white;
   border: none;

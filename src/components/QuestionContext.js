@@ -88,6 +88,9 @@ export const QuestionProvider = ({ children }) => {
     }
   };
 
+  const [shouldReloadParticipants, setShouldReloadParticipants] = useState(false);
+
+
   const syncData = async () => {
     try {
       console.log("Iniciando sincronización...");
@@ -99,6 +102,7 @@ export const QuestionProvider = ({ children }) => {
       await loadQuestions();
       setResponses([]);
       setCurrentQuestionIndex(0);
+      setShouldReloadParticipants(prev => !prev); // Alterna el valor de shouldReloadParticipants para forzar el re-renderizado
       toast.success('Datos sincronizados exitosamente');
     } catch (err) {
       console.error("Error durante la sincronización:", err);
@@ -215,8 +219,7 @@ export const QuestionProvider = ({ children }) => {
       error,
       currentComponent, 
       setCurrentComponent,
-      resetTrigger,
-      setResetTrigger,
+      shouldReloadParticipants,
     }}>
       {children}
     </QuestionContext.Provider>

@@ -7,6 +7,7 @@ import moment from 'moment';
 
 const DatePickerWrapper = styled.div`
   display: flex;
+  align-items: center;
   flex-direction: column;
   margin: 10px 0;
   width: 100%;
