@@ -21,98 +21,80 @@ const localResponsesDB = new PouchDB('responses');
 const finalDB = new PouchDB('finalDB');
 
 const SurveyForm = ({ onNavigate }) => {
-  const { questions, setQuestions, choices, isLoading, isSyncing, responses, setResponses, currentQuestionIndex, setCurrentQuestionIndex, syncData, handleUpload } = useContext(QuestionContext);
-  const { filters } = useContext(QuestionContext);
+  const { questions, choices, isLoading, isSyncing, responses, setResponses, currentQuestionIndex, setCurrentQuestionIndex, filters } = useContext(QuestionContext);
   const [answer, setAnswer] = useState('');
   const [caseID] = useState(uuidv4());
   const [previewUrl, setPreviewUrl] = useState('');
-  const [currentFile, setCurrentFile] = useState(null);
-
-  const handleImageUpload = async (imageFile, previewDataUrl) => {
-    const responseId = uuidv4();
-    const imageResponse = {
-      _id: responseId,
-      type: 'image',
-      CaseID: caseID,
-      ParentCaseID: caseID,
-      CaseDetails: '',
-      QuestionID: questions[currentQuestionIndex].QuestionID,
-      Index: currentQuestionIndex,
-      ResponseID: responseId,
-      Response: '',
-      Url: previewDataUrl,
-    };
-
-    try {
-      await localResponsesDB.put(imageResponse);
-      const doc = await localResponsesDB.get(responseId);
-      await localResponsesDB.putAttachment(doc._id, 'image.jpg', doc._rev, imageFile, 'image/jpeg');
-      setResponses([...responses, imageResponse]);
-      console.log('Imagen guardada:', imageResponse);
-    } catch (error) {
-      console.error("Error al guardar la imagen en PouchDB:", error);
-    }
-  };
-
-  const handleFileChange = async (file) => {
-    console.log('File selected:', file);
-    const fileUrl = URL.createObjectURL(file);
-    setPreviewUrl(fileUrl);
-    console.log('Generated preview URL:', fileUrl);
-
-    const responseId = uuidv4();
-    const fileResponse = {
-      _id: responseId,
-      type: file.type.split('/')[0],
-      CaseID: caseID,
-      ParentCaseID: caseID,
-      CaseDetails: '',
-      QuestionID: questions[currentQuestionIndex].QuestionID,
-      Index: currentQuestionIndex,
-      ResponseID: responseId,
-      Response: '',
-      Url: fileUrl,
-    };
-
-    try {
-      console.log('Saving file response to PouchDB...');
-      await localResponsesDB.put(fileResponse);
-      const doc = await localResponsesDB.get(responseId);
-      console.log('File response saved:', fileResponse);
-
-      console.log('Saving file attachment to PouchDB...');
-      await localResponsesDB.putAttachment(doc._id, file.name, doc._rev, file, file.type);
-      setResponses([...responses, fileResponse]);
-      console.log('Archivo guardado:', fileResponse);
-    } catch (error) {
-      console.error("Error al guardar el archivo en PouchDB:", error);
-    }
-  };
-  
   const [filteredQuestions, setFilteredQuestions] = useState([]);
 
   useEffect(() => {
-    console.log('useEffect for fetchFilteredQuestions running...');
-    const fetchFilteredQuestions = () => {
-      const newFilteredQuestions = questions.filter(q => 
-        (!filters.organization || q.Organization === filters.organization) &&
-        (!filters.program || q.Program === filters.program) &&
-        (!filters.formId || q.FormID === filters.formId) &&
-        (!filters.location || q.Location === filters.location) &&
-        (!filters.interviewer || q.Interviewer === filters.interviewer)
-      );
-      console.log('Filtered Questions:', newFilteredQuestions);
-      setFilteredQuestions(newFilteredQuestions);
-    };
-    fetchFilteredQuestions();
-  }, [filters, questions]);
+    localResponsesDB.createIndex({ index: { fields: ['CaseID', 'QuestionID'] } });
+    finalDB.createIndex({ index: { fields: ['CaseID', 'QuestionID'] } });
+  }, []);
+
+  const fetchFilteredQuestions = async (questions, filters, responses, caseID) => {
+    console.log('Iniciando filtrado de preguntas...');
+
+    // Pre-cargar todas las respuestas relevantes en un diccionario
+    const responseDict = {};
+    const allResponses = await localResponsesDB.find({ selector: { CaseID: caseID } });
+    allResponses.docs.forEach(response => {
+      responseDict[response.QuestionID] = response;
+    });
+
+    const newFilteredQuestions = questions.filter((q, index) => {
+      console.log(`Evaluando pregunta: ${q.QuestionID} - ${q.QuestionText}`);
+
+      // Filtrado basado en filtros de organización, programa, etc.
+      if (
+        (filters.organization && q.Organization !== filters.organization) ||
+        (filters.program && q.Program !== filters.program) ||
+        (filters.formId && q.FormID !== filters.formId) ||
+        (filters.location && q.Location !== filters.location) ||
+        (filters.interviewer && q.Interviewer !== filters.interviewer)
+      ) {
+        console.log(`Pregunta ${q.QuestionID} excluida por filtros de metadatos.`);
+        return false;
+      }
+
+      // Filtrado basado en dependencias de respuestas
+      if (q.ResponseDependencies) {
+        const dependencies = q.ResponseDependencies.split(',').map(dep => dep.trim());
+        for (let dep of dependencies) {
+          const [depQuestionID, depAnswer] = dep.split('=').map(s => s.trim().replace(/"/g, ''));
+          const response = responseDict[depQuestionID];
+
+          // Añadir logs para verificar las respuestas
+          console.log(`Evaluando dependencia para pregunta ${q.QuestionID}: ${depQuestionID} debe ser ${depAnswer}`);
+          console.log('Respuesta encontrada:', response);
+
+          // Verificar la respuesta correctamente
+          if (!response || response.Response !== depAnswer) {
+            console.log(`Pregunta ${q.QuestionID} excluida porque la respuesta de ${depQuestionID} no es ${depAnswer}`);
+            return false;
+          }
+        }
+      }
+
+      console.log(`Pregunta ${q.QuestionID} incluida.`);
+      return true;
+    });
+
+    console.log('Preguntas filtradas:', newFilteredQuestions);
+    return newFilteredQuestions;
+  };
 
   useEffect(() => {
-    setCurrentQuestionIndex(0);
-    console.log('Setting currentQuestionIndex to 0');
-  }, [filteredQuestions, setCurrentQuestionIndex]);
+    const updateFilteredQuestions = async () => {
+      const newFilteredQuestions = await fetchFilteredQuestions(questions, filters, responses, caseID);
+      setFilteredQuestions(newFilteredQuestions);
+    };
+
+    updateFilteredQuestions();
+  }, [filters, questions, responses, caseID]);
 
   const handleResponseChange = (value) => {
+    console.log(`Cambiando respuesta: ${value}`);
     setAnswer(value);
   };
 
@@ -133,6 +115,11 @@ const SurveyForm = ({ onNavigate }) => {
           }
         });
         console.log('Respuesta guardada:', response);
+
+        // Añadir log para verificar el estado actual de responses
+        const updatedResponses = await localResponsesDB.find({ selector: { CaseID: response.CaseID } });
+        console.log('Estado actual de responses después de guardar:', updatedResponses.docs);
+
         return;
       } catch (error) {
         if (error.status === 409) {
@@ -151,6 +138,8 @@ const SurveyForm = ({ onNavigate }) => {
     try {
       await saveOrUpdateResponse(response);
       console.log("Respuesta guardada:", response);
+      const newFilteredQuestions = await fetchFilteredQuestions(questions, filters, responses, caseID); // Recalcular preguntas filtradas después de guardar la respuesta
+      setFilteredQuestions(newFilteredQuestions);
     } catch (error) {
       console.error("Error final al guardar la respuesta en PouchDB:", error);
     }
@@ -159,7 +148,7 @@ const SurveyForm = ({ onNavigate }) => {
   const generateResponseId = (caseID, questionID) => `${caseID}-${questionID}-${uuidv4()}`;
 
   const handleNext = async () => {
-    if (questions[currentQuestionIndex].Required === 'true') {
+    if (filteredQuestions[currentQuestionIndex].Required === 'true') {
       if (Array.isArray(answer) && answer.length === 0) {
         alert('Respuesta es requerida.');
         return;
@@ -168,41 +157,77 @@ const SurveyForm = ({ onNavigate }) => {
         return;
       }
     }
-  
+
     if ((typeof answer === 'string' && answer.trim() === '') || (Array.isArray(answer) && answer.length === 0)) {
       console.log('No se guarda respuesta vacía.');
-      if (currentQuestionIndex < questions.length - 1) {
+      if (currentQuestionIndex < filteredQuestions.length - 1) {
         setCurrentQuestionIndex(currentQuestionIndex + 1);
       }
       return;
     }
 
     const response = {
-      _id: generateResponseId(caseID, questions[currentQuestionIndex].QuestionID),
+      _id: generateResponseId(caseID, filteredQuestions[currentQuestionIndex].QuestionID),
       CaseID: caseID,
       ParentCaseID: caseID,
       CaseDetails: '',
-      QuestionID: questions[currentQuestionIndex].QuestionID,
+      QuestionID: filteredQuestions[currentQuestionIndex].QuestionID,
       Index: currentQuestionIndex,
       ResponseID: uuidv4(),
       Response: answer,
     };
-  
+
+    console.log('Guardando respuesta:', response);
     await saveResponse(response);
     setAnswer('');
     setPreviewUrl('');
-    if (currentQuestionIndex < questions.length - 1) {
+    if (currentQuestionIndex < filteredQuestions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
   };
 
-  const handleBack = () => {
+  const handleBack = async () => {
     if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
-      const previousResponse = responses.find(response => response.QuestionID === questions[currentQuestionIndex - 1].QuestionID);
+      const nextQuestionIndex = currentQuestionIndex - 1;
+  
+      // Encuentra la respuesta de la pregunta actual que deseas eliminar
+      const responseToDelete = responses.find(
+        response => response.QuestionID === filteredQuestions[currentQuestionIndex - 1].QuestionID
+      );
+  
+      if (responseToDelete) {
+        try {
+          // Asegúrate de obtener la última revisión del documento
+          const docToDelete = await localResponsesDB.get(responseToDelete._id);
+          await localResponsesDB.remove(docToDelete);
+          console.log(`Respuesta eliminada: ${docToDelete._id}`);
+  
+          // Actualiza el estado local de las respuestas
+          setResponses(prevResponses =>
+            prevResponses.filter(response => response._id !== docToDelete._id)
+          );
+        } catch (error) {
+          console.error("Error eliminando la respuesta en PouchDB:", error);
+        }
+      } else {
+        console.log('No se encontró respuesta para eliminar.');
+      }
+  
+      // Retrocede a la pregunta anterior
+      setCurrentQuestionIndex(nextQuestionIndex);
+  
+      // Establece la respuesta para la nueva pregunta actual si existe
+      const previousResponse = responses.find(
+        response => response.QuestionID === filteredQuestions[nextQuestionIndex].QuestionID
+      );
       setAnswer(previousResponse ? previousResponse.Response : '');
     }
   };
+  
+
+
+  
+  
 
   const saveSurveyToFinalDB = async (caseID) => {
     try {
@@ -230,9 +255,63 @@ const SurveyForm = ({ onNavigate }) => {
     onNavigate('ParticipantList');  // Navegar a ParticipantList
   };
 
+  const handleFileChange = async (file) => {
+    const fileUrl = URL.createObjectURL(file);
+    setPreviewUrl(fileUrl);
+    const responseId = uuidv4();
+    const fileResponse = {
+      _id: responseId,
+      type: file.type.split('/')[0],
+      CaseID: caseID,
+      ParentCaseID: caseID,
+      CaseDetails: '',
+      QuestionID: filteredQuestions[currentQuestionIndex].QuestionID,
+      Index: currentQuestionIndex,
+      ResponseID: responseId,
+      Response: '',
+      Url: fileUrl,
+    };
+
+    try {
+      await localResponsesDB.put(fileResponse);
+      const doc = await localResponsesDB.get(responseId);
+      await localResponsesDB.putAttachment(doc._id, file.name, doc._rev, file, file.type);
+      setResponses([...responses, fileResponse]);
+      console.log('Archivo guardado:', fileResponse);
+    } catch (error) {
+      console.error("Error al guardar el archivo en PouchDB:", error);
+    }
+  };
+
+  const handleImageUpload = async (imageFile, previewDataUrl) => {
+    const responseId = uuidv4();
+    const imageResponse = {
+      _id: responseId,
+      type: 'image',
+      CaseID: caseID,
+      ParentCaseID: caseID,
+      CaseDetails: '',
+      QuestionID: filteredQuestions[currentQuestionIndex].QuestionID,
+      Index: currentQuestionIndex,
+      ResponseID: responseId,
+      Response: '',
+      Url: previewDataUrl,
+    };
+
+    try {
+      await localResponsesDB.put(imageResponse);
+      const doc = await localResponsesDB.get(responseId);
+      await localResponsesDB.putAttachment(doc._id, 'image.jpg', doc._rev, imageFile, 'image/jpeg');
+      setResponses([...responses, imageResponse]);
+      console.log('Imagen guardada:', imageResponse);
+    } catch (error) {
+      console.error("Error al guardar la imagen en PouchDB:", error);
+    }
+  };
+
   const getFilteredChoices = () => {
     if (!currentQuestion) return [];
-    const parentQuestionID = questions[currentQuestionIndex - 1]?.QuestionID;
+    const parentQuestionID = filteredQuestions[currentQuestionIndex - 1]?.QuestionID;
     const parentResponse = responses.find(response => response.QuestionID === parentQuestionID)?.Response;
 
     if (!parentResponse) return choices.filter(choice => choice.QuestionID === currentQuestion.QuestionID);
@@ -243,14 +322,14 @@ const SurveyForm = ({ onNavigate }) => {
     );
   };
 
-  const currentQuestion = questions && questions.length > 0 ? questions[currentQuestionIndex] : null;
+  const currentQuestion = filteredQuestions && filteredQuestions.length > 0 ? filteredQuestions[currentQuestionIndex] : null;
 
   const swipeHandlers = useSwipeable({
     onSwipedLeft: () => handleNext(),
     onSwipedRight: () => handleBack()
   });
 
-  const progress = (currentQuestionIndex + 1) / questions.length * 100;
+  const progress = (currentQuestionIndex + 1) / filteredQuestions.length * 100;
 
   return (
     <div {...swipeHandlers} css={containerStyle}>
@@ -263,7 +342,7 @@ const SurveyForm = ({ onNavigate }) => {
           &lt;
         </button>
         <ProgressBar progress={progress} />
-        {currentQuestionIndex < questions.length - 1 ? (
+        {currentQuestionIndex < filteredQuestions.length - 1 ? (
           <button 
             onClick={handleNext} 
             disabled={currentQuestion && currentQuestion.Required === 'true' && typeof answer === 'string' && answer.trim() === ''}
@@ -411,13 +490,12 @@ const SurveyForm = ({ onNavigate }) => {
               </>
             )}
           </div>
-
-          {/* <div css={savedResponsesStyle}>
+          <div css={savedResponsesStyle}>
             <h2>Respuestas guardadas</h2>
             <pre css={responsePreStyle}>
               {JSON.stringify(responses, null, 2)}
             </pre>
-          </div> */}
+          </div>
         </>
       )}
 
@@ -429,7 +507,7 @@ const SurveyForm = ({ onNavigate }) => {
         >
           Atrás
         </button>
-        {currentQuestionIndex < questions.length - 1 ? (
+        {currentQuestionIndex < filteredQuestions.length - 1 ? (
           <button 
             onClick={handleNext} 
             disabled={currentQuestion && currentQuestion.Required === 'true' && typeof answer === 'string' && answer.trim() === ''}
