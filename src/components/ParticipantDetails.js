@@ -5,6 +5,8 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { finalDB, QuestionContext } from './QuestionContext';
 import { css } from '@emotion/react';
+import { v4 as uuidv4 } from 'uuid';
+
 
 const ParticipantDetails = ({ participantId, onBack }) => {
   const [selectedTab, setSelectedTab] = useState(0);
@@ -26,7 +28,7 @@ const ParticipantDetails = ({ participantId, onBack }) => {
           acc[response.QuestionID] = response.Response;
           return acc;
         }, {});
-        participantData.photo = doc.responses.find(response => response.QuestionID === 'Q02')?.Url || ''; // Ajustar si la URL es correcta
+        participantData.photo = doc.responses.find(response => response.QuestionID === 'Q05')?.Url || ''; // Ajustar si la URL es correcta
         setFormData(participantData);
         setCaseNotesHistory(doc.caseNotes ? doc.caseNotes.reverse() : []);
         // Filtrar campos adicionales
@@ -94,7 +96,7 @@ const ParticipantDetails = ({ participantId, onBack }) => {
           <Tabs value={selectedTab} onChange={handleTabChange}>
             <Tab label="Biographic" css={selectedTab === 0 ? styles.selectedTab : styles.tab} />
             <Tab label="Case Notes" css={selectedTab === 1 ? styles.selectedTab : styles.tab} />
-            {/* Add other tabs as needed */}
+            <Tab label="Follow-up Forms" css={selectedTab === 2 ? styles.selectedTab : styles.tab} />
           </Tabs>
         </AppBar>
       </Box>
@@ -104,6 +106,9 @@ const ParticipantDetails = ({ participantId, onBack }) => {
         </TabPanel>
         <TabPanel value={selectedTab} index={1}>
           <CaseNotesTab caseNotes={caseNotes} setCaseNotes={setCaseNotes} caseNotesHistory={caseNotesHistory} handleSave={handleSave} handleDelete={handleDelete} />
+        </TabPanel>
+        <TabPanel value={selectedTab} index={2}>
+          <FollowUpFormsTab participantId={participantId} />
         </TabPanel>
       </Box>
       <Box css={styles.footer}>
@@ -154,17 +159,17 @@ const BiographicTab = ({ formData, handleChange, extraFields }) => (
       <Grid item xs={12} sm={8}>
         <Grid container spacing={2}>
           {[
-            { id: 'Q03', label: 'Apellidos' },
-            { id: 'Q04', label: 'Nombres' },
-            { id: 'Q05', label: 'Fecha Nacimiento' },
-            { id: 'Q06', label: 'Sexo'},
-            { id: 'Q07', label: 'Género' },
-            { id: 'Q08', label: 'Nacionalidad' },
-            { id: 'Q09', label: 'Estado Civil' },
-            { id: 'Q11', label: 'Tipo Documento' },
-            { id: 'Q12', label: 'Número de Documento' },
-            { id: 'Q14', label: 'Departamento de residencia' },
-            { id: 'Q15', label: 'Municipio de residencia' },
+            { id: 'Q06', label: 'Apellidos' },
+            { id: 'Q07', label: 'Nombres' },
+            { id: 'Q08', label: 'Fecha Nacimiento' },
+            { id: 'Q09', label: 'Sexo'},
+            { id: 'Q10', label: 'Género' },
+            { id: 'Q11', label: 'Nacionalidad' },
+            { id: 'Q12', label: 'Estado Civil' },
+            { id: 'Q14', label: 'Tipo Documento' },
+            { id: 'Q15', label: 'Número de Documento' },
+            { id: 'Q23', label: 'Departamento de residencia' },
+            { id: 'Q24', label: 'Municipio de residencia' },
           ].map(({ id, label, type, options }) => (
             <Grid item xs={12} sm={6} md={4} key={id}>
               {type === 'select' ? (
@@ -247,14 +252,72 @@ const CaseNotesTab = ({ caseNotes, setCaseNotes, caseNotesHistory, handleSave, h
   </Box>
 );
 
+const FollowUpFormsTab = ({ participantId }) => {
+  const [followUpForms, setFollowUpForms] = useState([]);
+
+  useEffect(() => {
+    const fetchFollowUpForms = async () => {
+      try {
+        const result = await finalDB.find({
+          selector: {
+            type: 'followup',
+            participantId: participantId,
+          },
+        });
+        setFollowUpForms(result.docs);
+      } catch (error) {
+        console.error('Error fetching follow-up forms:', error);
+      }
+    };
+
+    fetchFollowUpForms();
+  }, [participantId]);
+
+  const handleAddFollowUpForm = async () => {
+    const newForm = {
+      _id: uuidv4(),
+      type: 'followup',
+      participantId: participantId,
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      await finalDB.put(newForm);
+      setFollowUpForms([...followUpForms, newForm]);
+    } catch (error) {
+      console.error('Error adding follow-up form:', error);
+    }
+  };
+
+  return (
+    <Box>
+      <Button variant="contained" color="primary" onClick={handleAddFollowUpForm} style={{ marginBottom: '16px' }}>
+        Add Follow-up Form
+      </Button>
+      <Typography variant="h6" style={{ marginTop: '16px' }}>
+        Follow-up Forms
+      </Typography>
+      <Box>
+        {followUpForms.map((form) => (
+          <Box key={form._id} style={{ marginBottom: '8px' }}>
+            <Typography variant="body2" color="textSecondary">
+              Created at: {new Date(form.createdAt).toLocaleString()}
+            </Typography>
+            <Typography variant="body1">Form ID: {form._id}</Typography>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+};
+
 const styles = {
   container: css`
     display: flex;
     flex-direction: column;
     height: 100vh;
-    width: 100%;!important
+    width: 100%;
     overflow: hidden;
-    
   `,
   tabsContainer: css`
     position: fixed;

@@ -23,14 +23,14 @@ const ParticipantList = ({ onNavigate }) => {
           row.doc.responses.forEach(response => {
             const { CaseID, QuestionID, Response, Url } = response;
             if (!acc[CaseID]) acc[CaseID] = { CaseID };
-            if (QuestionID === 'Q04') acc[CaseID].name = Response;
-            if (QuestionID === 'Q05') acc[CaseID].birthdate = Response;
-            if (QuestionID === 'Q06') acc[CaseID].sex = Response;
-            if (QuestionID === 'Q08') acc[CaseID].nationality = Response;
-            if (QuestionID === 'Q11') acc[CaseID].documentType = Response;
-            if (QuestionID === 'Q12') acc[CaseID].documentNumber = Response;
-            if (QuestionID === 'Q15') acc[CaseID].residence = Response;
-            if (QuestionID === 'Q02') acc[CaseID].photo = Url;
+            if (QuestionID === 'Q07') acc[CaseID].name = Response;
+            if (QuestionID === 'Q08') acc[CaseID].birthdate = Response;
+            if (QuestionID === 'Q09') acc[CaseID].sex = Response;
+            if (QuestionID === 'Q11') acc[CaseID].nationality = Response;
+            if (QuestionID === 'Q14') acc[CaseID].documentType = Response;
+            if (QuestionID === 'Q15') acc[CaseID].documentNumber = Response;
+            if (QuestionID === 'Q23') acc[CaseID].residence = Response;
+            if (QuestionID === 'Q05') acc[CaseID].photo = Url;
           });
         }
         return acc;

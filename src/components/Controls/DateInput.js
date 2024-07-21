@@ -3,7 +3,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import styled from 'styled-components';
 import { lighten } from 'polished';
-import moment from 'moment';
+import { parseISO, isValid, format } from 'date-fns';
 
 const DatePickerWrapper = styled.div`
   display: flex;
@@ -17,10 +17,10 @@ const StyledDatePicker = styled(DatePicker)`
   width: 100%;
 
   .react-datepicker {
-    width: 100% !important; /* Aseguramos que el calendario ocupe todo el ancho */
+    width: 100% !important;
     .react-datepicker__month-container {
       width: 100%;
-      float: float: inherit; !important; /* Anulamos el float: left */
+      float: inherit !important;
       .react-datepicker__header {
         width: 100%;
         display: flex;
@@ -33,15 +33,15 @@ const StyledDatePicker = styled(DatePicker)`
       .react-datepicker__month {
         width: 100%;
         .react-datepicker__day {
-          width: 14.28%; /* Cada día ocupa 1/7 del ancho */
-          height: 3rem; /* Ajusta la altura según sea necesario */
+          width: 14.28%;
+          height: 3rem;
           line-height: 3rem;
           display: inline-flex;
           justify-content: center;
           align-items: center;
         }
         .react-datepicker__day-name {
-          width: 14.28%; /* Cada nombre de día ocupa 1/7 del ancho */
+          width: 14.28%;
           display: inline-flex;
           justify-content: center;
           align-items: center;
@@ -69,22 +69,31 @@ const StyledDatePicker = styled(DatePicker)`
 `;
 
 const DateInput = ({ value, onChange }) => {
-  const [selectedDate, setSelectedDate] = useState(value ? moment(value).toDate() : null);
+  const [selectedDate, setSelectedDate] = useState(value ? parseISO(value) : null);
 
   useEffect(() => {
-    setSelectedDate(value ? moment(value).toDate() : null);
+    setSelectedDate(value ? parseISO(value) : null);
   }, [value]);
 
   const handleDateChange = (date) => {
-    const formattedDate = date ? moment(date).format('YYYY-MM-DD') : '';
-    setSelectedDate(date);
-    onChange(formattedDate);
+    if (isValid(date)) {
+      const formattedDate = date ? format(date, 'yyyy-MM-dd') : '';
+      setSelectedDate(date);
+      onChange(formattedDate);
+    } else {
+      setSelectedDate(null);
+      onChange('');
+    }
+  };
+
+  const isValidDate = (date) => {
+    return date && !isNaN(date);
   };
 
   return (
     <DatePickerWrapper>
       <StyledDatePicker
-        selected={selectedDate}
+        selected={isValidDate(selectedDate) ? selectedDate : null}
         onChange={handleDateChange}
         inline
         showMonthDropdown
@@ -97,8 +106,8 @@ const DateInput = ({ value, onChange }) => {
         }) => (
           <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
             <select
-              value={moment(date).year()}
-              onChange={({ target: { value } }) => changeYear(value)}
+              value={isValidDate(date) ? date.getFullYear() : ''}
+              onChange={({ target: { value } }) => changeYear(parseInt(value))}
               style={{ marginRight: '10px' }}
             >
               {Array.from({ length: 70 }, (_, i) => i + 1970).map(year => (
@@ -108,12 +117,12 @@ const DateInput = ({ value, onChange }) => {
               ))}
             </select>
             <select
-              value={moment(date).month()}
-              onChange={({ target: { value } }) => changeMonth(value)}
+              value={isValidDate(date) ? date.getMonth() : ''}
+              onChange={({ target: { value } }) => changeMonth(parseInt(value))}
             >
-              {moment.months().map((month, index) => (
-                <option key={month} value={index}>
-                  {month}
+              {Array.from({ length: 12 }, (_, i) => (
+                <option key={i} value={i}>
+                  {format(new Date(0, i), 'MMMM')}
                 </option>
               ))}
             </select>

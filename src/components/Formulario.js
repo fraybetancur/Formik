@@ -88,25 +88,29 @@ const SurveyForm = ({ onNavigate }) => {
       console.error("Error al guardar el archivo en PouchDB:", error);
     }
   };
+  
+  const [filteredQuestions, setFilteredQuestions] = useState([]);
 
   useEffect(() => {
-    const fetchFilteredQuestions = async () => {
-      const filteredQuestions = questions.filter(q => 
+    console.log('useEffect for fetchFilteredQuestions running...');
+    const fetchFilteredQuestions = () => {
+      const newFilteredQuestions = questions.filter(q => 
         (!filters.organization || q.Organization === filters.organization) &&
         (!filters.program || q.Program === filters.program) &&
         (!filters.formId || q.FormID === filters.formId) &&
         (!filters.location || q.Location === filters.location) &&
         (!filters.interviewer || q.Interviewer === filters.interviewer)
       );
-      setQuestions(filteredQuestions);
+      console.log('Filtered Questions:', newFilteredQuestions);
+      setFilteredQuestions(newFilteredQuestions);
     };
     fetchFilteredQuestions();
-  }, [filters, questions, setQuestions]);
-  
+  }, [filters, questions]);
 
   useEffect(() => {
     setCurrentQuestionIndex(0);
-  }, [setCurrentQuestionIndex]);
+    console.log('Setting currentQuestionIndex to 0');
+  }, [filteredQuestions, setCurrentQuestionIndex]);
 
   const handleResponseChange = (value) => {
     setAnswer(value);
@@ -385,7 +389,12 @@ const SurveyForm = ({ onNavigate }) => {
                           </video>
                         )}
                         {currentQuestion.ResponseType === 'Datos adjuntos' && (
-                          <a href={previewUrl} download="attachment">Descargar adjunto</a>
+                          <div>
+                            <a href={previewUrl} download="attachment">Descargar adjunto</a>
+                            <div css={{ height: '500px', width: '100%' }}>
+                              <PDFViewer fileUrl={previewUrl} />
+                            </div>
+                          </div>
                         )}
                         {currentQuestion.ResponseType === 'Visor de PDF' && (
                           <div css={{ height: '500px', width: '100%' }}>
@@ -403,12 +412,12 @@ const SurveyForm = ({ onNavigate }) => {
             )}
           </div>
 
-          <div css={savedResponsesStyle}>
+          {/* <div css={savedResponsesStyle}>
             <h2>Respuestas guardadas</h2>
             <pre css={responsePreStyle}>
               {JSON.stringify(responses, null, 2)}
             </pre>
-          </div>
+          </div> */}
         </>
       )}
 
@@ -476,9 +485,14 @@ const responsePreStyle = css`
 `;
 
 const buttonContainerStyle = css`
-  display: flex;
-  padding: 10px 0;
-  justify-content: space-between;
+    position: fixed;
+    bottom: 0;
+    width: 90%;
+    display: flex;
+    justify-content: space-around;
+    padding: 16px;
+    background-color: white;
+    border-top: 1px solid #e0e0e0;
 `;
 
 const buttonStyle = css`
@@ -487,6 +501,8 @@ const buttonStyle = css`
   border: none;
   border-radius: 5px;
   cursor: pointer;
+  width: 100px;
+  height: 40px;
 
   &:disabled {
     background-color: #cccccc;
@@ -499,18 +515,16 @@ const navigationContainerStyle = css`
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 10px;
   z-index: 1000;
 `;
 
 const navigationButtonStyle = css`
-  padding: 10px 20px;
   color: #08c;
   background: none;
   border: none;
   border-radius: 5px;
   cursor: pointer;
-
+  font-size: large;
   &:disabled {
     cursor: not-allowed;
   }
