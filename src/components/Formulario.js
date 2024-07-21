@@ -374,20 +374,20 @@ const SurveyForm = ({ onNavigate }) => {
                         {currentQuestion.ResponseType === 'Audio' && (
                           <audio controls>
                             <source src={previewUrl} type="audio/*" />
-                            Your browser does not support the audio element.
+                            Tu navegador no soporta el elemento de audio.
                           </audio>
                         )}
                         {currentQuestion.ResponseType === 'Cámara' && (
                           <video controls width="250">
                             <source src={previewUrl} type="video/*" />
-                            Your browser does not support the video element.
+                            Tu navegador no soporta el elemento de video.
                           </video>
                         )}
                         {currentQuestion.ResponseType === 'Datos adjuntos' && (
-                          <a href={previewUrl} download="attachment">Download Attachment</a>
+                          <a href={previewUrl} download="attachment">Descargar adjunto</a>
                         )}
                         {currentQuestion.ResponseType === 'Visor de PDF' && (
-                          <div css={{ height: '500px' }}>
+                          <div css={{ height: '500px', width: '100%' }}>
                             <PDFViewer fileUrl={previewUrl} />
                           </div>
                         )}
@@ -403,7 +403,7 @@ const SurveyForm = ({ onNavigate }) => {
           </div>
 
           <div css={savedResponsesStyle}>
-            <h2>Saved Responses</h2>
+            <h2>Respuestas guardadas</h2>
             <pre css={responsePreStyle}>
               {JSON.stringify(responses, null, 2)}
             </pre>
@@ -417,7 +417,7 @@ const SurveyForm = ({ onNavigate }) => {
           disabled={currentQuestionIndex === 0}
           css={buttonStyle}
         >
-          Back
+          Atrás
         </button>
         {currentQuestionIndex < questions.length - 1 ? (
           <button 
@@ -425,14 +425,14 @@ const SurveyForm = ({ onNavigate }) => {
             disabled={currentQuestion && currentQuestion.Required === 'true' && typeof answer === 'string' && answer.trim() === ''}
             css={buttonStyle}
           >
-            Next
+            Siguiente
           </button>
         ) : (
           <button 
             onClick={handleSubmit}
             css={buttonStyle}
           >
-            Submit
+            Enviar
           </button>
         )}
       </div>
