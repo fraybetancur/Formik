@@ -32,6 +32,107 @@ const SurveyForm = ({ onNavigate }) => {
     finalDB.createIndex({ index: { fields: ['CaseID', 'QuestionID'] } });
   }, []);
 
+  const parseDependencies = (dependencies) => {
+    return dependencies.split('AND').map(dep => {
+      let operator;
+      let value;
+      let fact;
+
+      dep = dep.trim();
+      if (dep.includes(' OR ')) {
+        const conditions = dep.split(' OR ').map(cond => parseDependencies(cond.trim())[0]);
+        return { conditions, operator: 'OR' };
+      } else if (dep.includes('=')) {
+        [fact, value] = dep.split('=').map(s => s.trim().replace(/"/g, ''));
+        operator = '==';
+      } else if (dep.includes('<>')) {
+        [fact, value] = dep.split('<>').map(s => s.trim().replace(/"/g, ''));
+        operator = '!=';
+      } else if (dep.includes('>=')) {
+        [fact, value] = dep.split('>=').map(s => s.trim());
+        operator = '>=';
+      } else if (dep.includes('<=')) {
+        [fact, value] = dep.split('<=').map(s => s.trim());
+        operator = '<=';
+      } else if (dep.includes('>')) {
+        [fact, value] = dep.split('>').map(s => s.trim());
+        operator = '>';
+      } else if (dep.includes('<')) {
+        [fact, value] = dep.split('<').map(s => s.trim());
+        operator = '<';
+      } else if (dep.includes('STARTS WITH')) {
+        [fact, value] = dep.split('STARTS WITH').map(s => s.trim());
+        operator = 'STARTS WITH';
+      } else if (dep.includes('ENDS WITH')) {
+        [fact, value] = dep.split('ENDS WITH').map(s => s.trim());
+        operator = 'ENDS WITH';
+      } else if (dep.includes('CONTAINS')) {
+        [fact, value] = dep.split('CONTAINS').map(s => s.trim());
+        operator = 'CONTAINS';
+      } else if (dep.includes('BETWEEN')) {
+        [fact, value] = dep.split('BETWEEN').map(s => s.trim());
+        operator = 'BETWEEN';
+      } else if (dep.includes('NOT BETWEEN')) {
+        [fact, value] = dep.split('NOT BETWEEN').map(s => s.trim());
+        operator = 'NOT BETWEEN';
+      } else if (dep.includes('IN')) {
+        [fact, value] = dep.split('IN').map(s => s.trim().replace(/[\[\]]/g, '').split(',').map(v => v.trim()));
+        operator = 'IN';
+      } else if (dep.includes('NOT IN')) {
+        [fact, value] = dep.split('NOT IN').map(s => s.trim().replace(/[\[\]]/g, '').split(',').map(v => v.trim()));
+        operator = 'NOT IN';
+      }
+
+      return { fact, operator, value };
+    });
+  };
+
+  const evaluateDependency = (factValue, operator, value) => {
+    console.log(`Evaluando dependencia: { factValue: ${factValue}, operator: ${operator}, value: ${value} }`);
+    switch (operator) {
+      case '==':
+        return factValue == value; // Cambiado a ==
+      case '!=':
+        return factValue != value; // Cambiado a !=
+      case '>':
+        return Number(factValue) > Number(value);
+      case '>=':
+        return Number(factValue) >= Number(value);
+      case '<':
+        return Number(factValue) < Number(value);
+      case '<=':
+        return Number(factValue) <= Number(value);
+      case 'STARTS WITH':
+        return factValue.startsWith(value);
+      case 'ENDS WITH':
+        return factValue.endsWith(value);
+      case 'CONTAINS':
+        return factValue.includes(value);
+      case 'BETWEEN':
+        const [min, max] = value.split('AND').map(v => v.trim());
+        return Number(factValue) >= Number(min) && Number(factValue) <= Number(max);
+      case 'NOT BETWEEN':
+        const [minNB, maxNB] = value.split('AND').map(v => v.trim());
+        return Number(factValue) < Number(minNB) || Number(factValue) > Number(maxNB);
+      case 'IN':
+        return value.includes(factValue);
+      case 'NOT IN':
+        return !value.includes(factValue);
+      default:
+        return false;
+    }
+  };
+
+  const evaluateConditions = (conditions, responseDict) => {
+    return conditions.every(cond => {
+      if (cond.operator === 'OR') {
+        return cond.conditions.some(subCond => evaluateConditions([subCond], responseDict));
+      }
+      const response = responseDict[cond.fact];
+      return response && evaluateDependency(response.Response, cond.operator, cond.value);
+    });
+  };
+
   const fetchFilteredQuestions = async (questions, filters, responses, caseID) => {
     console.log('Iniciando filtrado de preguntas...');
 
@@ -59,20 +160,10 @@ const SurveyForm = ({ onNavigate }) => {
 
       // Filtrado basado en dependencias de respuestas
       if (q.ResponseDependencies) {
-        const dependencies = q.ResponseDependencies.split(',').map(dep => dep.trim());
-        for (let dep of dependencies) {
-          const [depQuestionID, depAnswer] = dep.split('=').map(s => s.trim().replace(/"/g, ''));
-          const response = responseDict[depQuestionID];
-
-          // Añadir logs para verificar las respuestas
-          console.log(`Evaluando dependencia para pregunta ${q.QuestionID}: ${depQuestionID} debe ser ${depAnswer}`);
-          console.log('Respuesta encontrada:', response);
-
-          // Verificar la respuesta correctamente
-          if (!response || response.Response !== depAnswer) {
-            console.log(`Pregunta ${q.QuestionID} excluida porque la respuesta de ${depQuestionID} no es ${depAnswer}`);
-            return false;
-          }
+        const dependencies = parseDependencies(q.ResponseDependencies);
+        if (!evaluateConditions(dependencies, responseDict)) {
+          console.log(`Pregunta ${q.QuestionID} excluida por no cumplir las dependencias.`);
+          return false;
         }
       }
 
@@ -146,6 +237,7 @@ const SurveyForm = ({ onNavigate }) => {
   };
 
   const generateResponseId = (caseID, questionID) => `${caseID}-${questionID}-${uuidv4()}`;
+
 
   const handleNext = async () => {
     if (filteredQuestions[currentQuestionIndex].Required === 'true') {
