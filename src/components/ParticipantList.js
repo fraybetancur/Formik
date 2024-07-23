@@ -12,11 +12,11 @@ const ParticipantList = ({ onNavigate }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [selectedParticipantId, setSelectedParticipantId] = useState(null);
-  const { shouldReloadParticipants } = useContext(QuestionContext); // Usar shouldReloadParticipants del contexto
+  const { setFilters, filters, shouldReloadParticipants } = useContext(QuestionContext);
 
   const fetchParticipants = async () => {
     try {
-      setLoading(true); // Añadido para mostrar el indicador de carga correctamente
+      setLoading(true);
       const allDocs = await finalDB.allDocs({ include_docs: true });
       const fetchedParticipants = allDocs.rows.reduce((acc, row) => {
         if (row.doc.responses) {
@@ -45,7 +45,7 @@ const ParticipantList = ({ onNavigate }) => {
 
   useEffect(() => {
     fetchParticipants();
-  }, [shouldReloadParticipants]); // Dependencia en shouldReloadParticipants para forzar la recarga
+  }, [shouldReloadParticipants]);
 
   const filteredParticipants = participants.filter(participant =>
     (participant.name && participant.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -54,6 +54,7 @@ const ParticipantList = ({ onNavigate }) => {
 
   const handleSelectParticipant = (participant) => {
     setSelectedParticipantId(participant.CaseID);
+    onNavigate('ParticipantDetails'); // Asegúrate de que `onNavigate` navegue a `ParticipantDetails`
   };
 
   const handleBack = () => {
@@ -61,6 +62,7 @@ const ParticipantList = ({ onNavigate }) => {
   };
 
   const handleAddParticipant = () => {
+    setFilters({ ...filters, formId: 'Registro' });
     onNavigate('Formulario');
   };
 

@@ -81,6 +81,7 @@ const AppContent = () => {
   };
 
   const handleNavigate = (component) => {
+    console.log('handleNavigate called with component:', component); // Log para depuración
     if (component === 'Formulario') {
       setCurrentQuestionIndex(0);
     }
@@ -105,6 +106,7 @@ const AppContent = () => {
       case 'ParticipantList':
         return <ParticipantList onNavigate={handleNavigate} />;
       case 'ParticipantDetails':
+        console.log('Rendering ParticipantDetails with onNavigate:', typeof handleNavigate); // Log para depuración
         return <ParticipantDetails onNavigate={handleNavigate} />;
       case 'PDFUploader':
         return <PDFUploader onNavigate={handleNavigate} />;

@@ -249,4 +249,4 @@ export const QuestionProvider = ({ children }) => {
   );
 };
 
-export { localResponsesDB, finalDB };
+export {localSurveyDB, localResponsesDB, finalDB };

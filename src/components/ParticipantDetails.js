@@ -1,14 +1,14 @@
 /** @jsxImportSource @emotion/react */
 import React, { useState, useEffect, useContext } from 'react';
-import { AppBar, Tabs, Tab, Box, Grid, TextField, Avatar, Button, MenuItem, Typography, IconButton, Divider } from '@mui/material';
+import { AppBar, Tabs, Tab, Box, Grid, TextField, Avatar, Button, MenuItem, Typography, IconButton, Divider, FormControl, InputLabel, Select } from '@mui/material'; // Importa los componentes necesarios
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { finalDB, QuestionContext } from './QuestionContext';
+import { finalDB, QuestionContext, localSurveyDB } from './QuestionContext'; // Importa la base de datos local de encuestas
 import { css } from '@emotion/react';
 import { v4 as uuidv4 } from 'uuid';
 
-
-const ParticipantDetails = ({ participantId, onBack }) => {
+const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
+  console.log('ParticipantDetails onNavigate:', onNavigate); // Verificación
   const [selectedTab, setSelectedTab] = useState(0);
   const [formData, setFormData] = useState({});
   const [extraFields, setExtraFields] = useState([]);
@@ -108,7 +108,7 @@ const ParticipantDetails = ({ participantId, onBack }) => {
           <CaseNotesTab caseNotes={caseNotes} setCaseNotes={setCaseNotes} caseNotesHistory={caseNotesHistory} handleSave={handleSave} handleDelete={handleDelete} />
         </TabPanel>
         <TabPanel value={selectedTab} index={2}>
-          <FollowUpFormsTab participantId={participantId} />
+          <FollowUpFormsTab participantId={participantId} onNavigate={onNavigate} />
         </TabPanel>
       </Box>
       <Box css={styles.footer}>
@@ -128,7 +128,7 @@ const ParticipantDetails = ({ participantId, onBack }) => {
 
 const TabPanel = (props) => {
   const { children, value, index, ...other } = props;
-
+  console.log('ParticipantDetails onNavigate:', typeof onNavigate); // Log para depuración
   return (
     <div
       role="tabpanel"
@@ -252,9 +252,14 @@ const CaseNotesTab = ({ caseNotes, setCaseNotes, caseNotesHistory, handleSave, h
   </Box>
 );
 
-const FollowUpFormsTab = ({ participantId }) => {
+const FollowUpFormsTab = ({ participantId, onNavigate }) => {
+  const { setFilters } = useContext(QuestionContext);
   const [followUpForms, setFollowUpForms] = useState([]);
-
+  const [formIds, setFormIds] = useState([]);
+  const [selectedFormId, setSelectedFormId] = useState('');
+  const [responses, setResponses] = useState([]); // Estado para almacenar las respuestas
+  console.log('FollowUpFormsTab onNavigate:', typeof onNavigate); // Log para depuración
+  // Fetch follow-up forms related to the participant
   useEffect(() => {
     const fetchFollowUpForms = async () => {
       try {
@@ -264,6 +269,7 @@ const FollowUpFormsTab = ({ participantId }) => {
             participantId: participantId,
           },
         });
+        console.log('Follow-up forms fetched:', result.docs); // Log the fetched follow-up forms
         setFollowUpForms(result.docs);
       } catch (error) {
         console.error('Error fetching follow-up forms:', error);
@@ -273,26 +279,84 @@ const FollowUpFormsTab = ({ participantId }) => {
     fetchFollowUpForms();
   }, [participantId]);
 
+  // Fetch unique form IDs from the survey database
+  useEffect(() => {
+    const fetchFormIds = async () => {
+      try {
+        const allForms = await localSurveyDB.allDocs({ include_docs: true });
+        const uniqueFormIds = [...new Set(allForms.rows.map(row => row.doc.FormID).filter(formId => formId && formId !== 'Registro'))];
+        console.log('All Forms:', allForms.rows.map(row => row.doc)); // Log all forms
+        console.log('Unique Form IDs:', uniqueFormIds); // Log the unique form IDs
+        setFormIds(uniqueFormIds);
+      } catch (error) {
+        console.error('Error fetching form IDs:', error);
+      }
+    };
+
+    fetchFormIds();
+  }, []);
+
+  // Fetch responses from the local survey database for debugging
+  useEffect(() => {
+    const fetchResponses = async () => {
+      try {
+        const allResponses = await localSurveyDB.allDocs({ include_docs: true });
+        console.log('Responses fetched:', allResponses.rows.map(row => row.doc)); // Log the fetched responses
+        setResponses(allResponses.rows.map(row => row.doc));
+      } catch (error) {
+        console.error('Error fetching responses:', error);
+      }
+    };
+
+    fetchResponses();
+  }, []);
+
   const handleAddFollowUpForm = async () => {
     const newForm = {
       _id: uuidv4(),
       type: 'followup',
       participantId: participantId,
+      formId: selectedFormId,
       createdAt: new Date().toISOString(),
     };
 
     try {
       await finalDB.put(newForm);
       setFollowUpForms([...followUpForms, newForm]);
+      console.log('New follow-up form added:', newForm); // Log the added follow-up form
     } catch (error) {
       console.error('Error adding follow-up form:', error);
     }
   };
 
+  const handleNavigateToForm = () => {
+    setFilters({ formId: selectedFormId, participantId });
+    if (typeof onNavigate === 'function') {
+      console.log('Navigating to form:', selectedFormId); // Log the navigation action
+      onNavigate('Formulario');
+    } else {
+      console.error('onNavigate is not a function');
+    }
+  };
+  
   return (
     <Box>
-      <Button variant="contained" color="primary" onClick={handleAddFollowUpForm} style={{ marginBottom: '16px' }}>
-        Add Follow-up Form
+      <FormControl fullWidth margin="normal">
+        <InputLabel id="formId-label">Formulario de Seguimiento</InputLabel>
+        <Select
+          labelId="formId-label"
+          value={selectedFormId}
+          onChange={(e) => setSelectedFormId(e.target.value)}
+        >
+          {formIds.map((formId) => (
+            <MenuItem key={formId} value={formId}>
+              {formId}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      <Button variant="contained" color="primary" onClick={handleNavigateToForm} style={{ marginBottom: '16px' }}>
+        Navegar al Formulario
       </Button>
       <Typography variant="h6" style={{ marginTop: '16px' }}>
         Follow-up Forms
@@ -303,13 +367,32 @@ const FollowUpFormsTab = ({ participantId }) => {
             <Typography variant="body2" color="textSecondary">
               Created at: {new Date(form.createdAt).toLocaleString()}
             </Typography>
-            <Typography variant="body1">Form ID: {form._id}</Typography>
+            <Typography variant="body1">Form ID: {form.formId}</Typography>
           </Box>
         ))}
+      </Box>
+      {/* Sección de Respuestas Guardadas para depuración */}
+      <Box css={savedResponsesStyle}>
+        <h2>Respuestas guardadas</h2>
+        <pre css={responsePreStyle}>
+          {JSON.stringify(responses, null, 2)}
+        </pre>
       </Box>
     </Box>
   );
 };
+
+const savedResponsesStyle = css`
+  margin-top: 2rem;
+`;
+
+const responsePreStyle = css`
+  background: #f6f8fa;
+  padding: 1rem;
+  border-radius: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+`;
 
 const styles = {
   container: css`
