@@ -1,14 +1,16 @@
 /** @jsxImportSource @emotion/react */
 import React, { useState, useEffect, useContext } from 'react';
-import { AppBar, Tabs, Tab, Box, Grid, TextField, Avatar, Button, MenuItem, Typography, IconButton, Divider, FormControl, InputLabel, Select } from '@mui/material'; // Importa los componentes necesarios
+import { AppBar, Tabs, Tab, Box, Grid, TextField, Avatar, Button, MenuItem, Typography, IconButton, Divider, FormControl, InputLabel, Select, List, ListItem, ListItemText, ListItemSecondaryAction } from '@mui/material'; // Importa los componentes necesarios
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CheckIcon from '@mui/icons-material/Check';
 import { finalDB, QuestionContext, localSurveyDB } from './QuestionContext'; // Importa la base de datos local de encuestas
 import { css } from '@emotion/react';
 import { v4 as uuidv4 } from 'uuid';
 
 const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
   console.log('ParticipantDetails onNavigate:', onNavigate); // Verificación
+  console.log('ParticipantDetails onBack:', onBack); // Verificación
   console.log('ParticipantDetails participantId:', participantId); // Log para depuración
   const [selectedTab, setSelectedTab] = useState(0);
   const [formData, setFormData] = useState({});
@@ -19,23 +21,53 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
 
   const [caseNotes, setCaseNotes] = useState('');
   const [caseNotesHistory, setCaseNotesHistory] = useState([]);
+  const [formIds, setFormIds] = useState([]);
 
   useEffect(() => {
     const fetchParticipantData = async () => {
       try {
         setLoading(true);
-        const doc = await finalDB.get(participantId);
-        const participantData = doc.responses.reduce((acc, response) => {
-          acc[response.QuestionID] = response.Response;
-          return acc;
-        }, {});
-        participantData.photo = doc.responses.find(response => response.QuestionID === 'Q05')?.Url || ''; // Ajustar si la URL es correcta
-        participantData.caseID = participantId; // Agregar el caseID al formData
-        setFormData(participantData);
-        setCaseNotesHistory(doc.caseNotes ? doc.caseNotes.reverse() : []);
-        // Filtrar campos adicionales
-        const extraFields = doc.responses.filter(response => response.QuestionID.startsWith('extra'));
-        setExtraFields(extraFields);
+        console.log('Iniciando obtención de datos de participante para participantId:', participantId);
+
+        // Consulta todos los documentos con el mismo caseID y formID = 'Registro'
+        const result = await finalDB.find({
+          selector: {
+            caseID: participantId,
+            formID: 'Registro'
+          }
+        });
+
+        console.log('Resultado de búsqueda en finalDB:', result.docs);
+
+        if (result.docs.length > 0) {
+          const participantData = {};
+          const caseNotesList = [];
+          let photoUrl = '';
+
+          result.docs.forEach(doc => {
+            console.log('Documento del participante encontrado:', doc);
+
+            doc.responses.forEach(response => {
+              participantData[response.QuestionID] = response.Response;
+              if (response.QuestionID === 'Q05' && response.Url) {
+                photoUrl = response.Url; // Obtiene la URL de la foto
+              }
+            });
+
+            if (doc.caseNotes) {
+              caseNotesList.push(...doc.caseNotes.reverse());
+            }
+          });
+
+          participantData.photo = photoUrl || ''; // Asigna la URL de la foto
+          participantData.caseID = participantId; // Agregar el caseID al formData
+          setFormData(participantData);
+          setCaseNotesHistory(caseNotesList);
+          setExtraFields(result.docs.flatMap(doc => doc.responses.filter(response => response.QuestionID.startsWith('extra'))));
+        } else {
+          throw new Error('No participant data found');
+        }
+
         setLoading(false);
       } catch (err) {
         setError(`Error fetching participant data from finalDB: ${err.message}`);
@@ -90,7 +122,7 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
   if (error) {
     return <div>{error}</div>;
   }
-
+  console.log('Datos del participante para mostrar:', formData);
   return (
     <Box css={styles.container}>
       <Box css={styles.tabsContainer}>
@@ -103,10 +135,6 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
         </AppBar>
       </Box>
       <Box css={styles.content}>
-        {/* Mostrar el caseId al principio */}
-        <Typography variant="h6" style={{ marginBottom: '16px' }}>
-          Case ID: {participantId}
-        </Typography>
         <TabPanel value={selectedTab} index={0}>
           <BiographicTab formData={formData} handleChange={handleChange} extraFields={extraFields} />
         </TabPanel>
@@ -121,7 +149,17 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
         <Button variant="contained" color="primary" onClick={handleSave} style={{ marginRight: '8px' }}>
           Save Case Member
         </Button>
-        <Button variant="outlined" onClick={onBack}>
+        <Button
+          variant="outlined"
+          onClick={() => {
+            console.log('Botón Back clickeado'); // Log para depuración
+            if (onBack) {
+              onBack();
+            } else {
+              console.error('onBack no está definido');
+            }
+          }}
+        >
           Back
         </Button>
         <IconButton onClick={handleAddField} color="primary">
@@ -178,7 +216,7 @@ const BiographicTab = ({ formData, handleChange, extraFields }) => (
             { id: 'Q06', label: 'Apellidos' },
             { id: 'Q07', label: 'Nombres' },
             { id: 'Q08', label: 'Fecha Nacimiento' },
-            { id: 'Q09', label: 'Sexo'},
+            { id: 'Q09', label: 'Sexo' },
             { id: 'Q10', label: 'Género' },
             { id: 'Q11', label: 'Nacionalidad' },
             { id: 'Q12', label: 'Estado Civil' },
@@ -283,8 +321,7 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
       try {
         const result = await finalDB.find({
           selector: {
-            type: 'followup',
-            participantId: participantId,
+            caseID: participantId,
           },
         });
         console.log('Follow-up forms fetched:', result.docs); // Log the fetched follow-up forms
@@ -333,8 +370,8 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
     const newForm = {
       _id: uuidv4(),
       type: 'followup',
-      participantId: participantId,
-      formId: selectedFormId,
+      caseID: participantId,
+      formID: selectedFormId,
       createdAt: new Date().toISOString(),
     };
 
@@ -347,56 +384,52 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
     }
   };
 
-  const handleNavigateToForm = () => {
-    setFilters({ formId: selectedFormId, participantId });
+  const handleNavigateToForm = (formId) => {
+    setFilters({ formId: formId, participantId });
     if (typeof onNavigate === 'function') {
-      console.log('Navigating to form with formId:', selectedFormId, 'and participantId:', participantId); // Log para verificar el formId y participantId
+      console.log('Navigating to form with formId:', formId, 'and participantId:', participantId); // Log para verificar el formId y participantId
       onNavigate('Formulario', participantId); // Pasar participantId como caseID
     } else {
       console.error('onNavigate is not a function');
     }
   };
-  
+
+  // Definir la función isFormCompleted aquí
+  const isFormCompleted = (formId) => {
+    return followUpForms.some(form => form.formID === formId);
+  };
 
   return (
     <Box>
-      <FormControl fullWidth margin="normal">
-        <InputLabel id="formId-label">Formulario de Seguimiento</InputLabel>
-        <Select
-          labelId="formId-label"
-          value={selectedFormId}
-          onChange={(e) => setSelectedFormId(e.target.value)}
-        >
-          {formIds.map((formId) => (
-            <MenuItem key={formId} value={formId}>
-              {formId}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-      <Button variant="contained" color="primary" onClick={handleNavigateToForm} style={{ marginBottom: '16px' }}>
-        Navegar al Formulario
-      </Button>
       <Typography variant="h6" style={{ marginTop: '16px' }}>
         Follow-up Forms
       </Typography>
-      <Box>
-        {followUpForms.map((form) => (
-          <Box key={form._id} style={{ marginBottom: '8px' }}>
-            <Typography variant="body2" color="textSecondary">
-              Created at: {new Date(form.createdAt).toLocaleString()}
-            </Typography>
-            <Typography variant="body1">Form ID: {form.formId}</Typography>
+      <List>
+        {formIds.map((formId) => (
+          <Box key={formId}>
+            <ListItem>
+              <ListItemText primary={formId} />
+              <ListItemSecondaryAction>
+                {isFormCompleted(formId) ? (
+                  <IconButton edge="end" disabled>
+                    <CheckIcon color="action" />
+                  </IconButton>
+                ) : (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={<AddIcon />}
+                    onClick={() => handleNavigateToForm(formId)}
+                  >
+                    Diligenciar
+                  </Button>
+                )}
+              </ListItemSecondaryAction>
+            </ListItem>
+            <Divider />
           </Box>
         ))}
-      </Box>
-      {/* Sección de Respuestas Guardadas para depuración */}
-      <Box css={savedResponsesStyle}>
-        <h2>Respuestas guardadas</h2>
-        <pre css={responsePreStyle}>
-          {JSON.stringify(responses, null, 2)}
-        </pre>
-      </Box>
+      </List>
     </Box>
   );
 };

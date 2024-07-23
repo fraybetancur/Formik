@@ -21,7 +21,7 @@ const localResponsesDB = new PouchDB('responses');
 const finalDB = new PouchDB('finalDB');
 
 const SurveyForm = ({ onNavigate, participantId }) => {
-  const { questions, choices, isLoading, isSyncing, responses, setResponses, currentQuestionIndex, setCurrentQuestionIndex, filters } = useContext(QuestionContext);
+  const { questions, choices, isLoading, isSyncing, responses, setResponses, currentQuestionIndex, setCurrentQuestionIndex, handleResetResponses, filters } = useContext(QuestionContext);
   const [answer, setAnswer] = useState('');
   const [caseID] = useState(participantId || uuidv4());
   console.log('SurveyForm initialized with caseID:', caseID); // Log para verificar el caseID
@@ -265,6 +265,7 @@ const SurveyForm = ({ onNavigate, participantId }) => {
       ParentCaseID: caseID,
       CaseDetails: '',
       QuestionID: filteredQuestions[currentQuestionIndex].QuestionID,
+      FormID: filters.formId,
       Index: currentQuestionIndex,
       ResponseID: uuidv4(),
       Response: answer,
@@ -324,29 +325,45 @@ const SurveyForm = ({ onNavigate, participantId }) => {
 
   const saveSurveyToFinalDB = async (caseID) => {
     try {
+      console.log('Iniciando guardado de encuesta en finalDB para caseID:', caseID);
       const allResponses = await localResponsesDB.find({
         selector: { CaseID: caseID }
       });
-
+  
+      console.log('Respuestas obtenidas para guardar:', allResponses.docs);
+  
       const surveyData = {
-        _id: caseID,
+        _id: uuidv4(),
+        caseID: caseID,
+        formID: filters.formId,
         responses: allResponses.docs,
         timestamp: new Date().toISOString(),
       };
-
+  
       await finalDB.put(surveyData);
       console.log('Encuesta guardada en finalDB:', surveyData);
     } catch (error) {
       console.error('Error al guardar la encuesta en finalDB:', error);
     }
   };
+  
 
+  // Reemplaza la función handleSubmit por la siguiente:
   const handleSubmit = async () => {
-    await handleNext();  // Asegura guardar la última respuesta
-    await saveSurveyToFinalDB(caseID);  // Agrega esta línea
-    alert('Encuesta completada y guardada en la base de datos final.');
-    onNavigate('ParticipantList');  // Navegar a ParticipantList
+    // Mostrar mensaje de confirmación
+    const confirmed = window.confirm('¿Deseas enviar la encuesta?');
+    if (confirmed) {
+      console.log('Usuario confirmó el envío de la encuesta.');
+      await saveSurveyToFinalDB(caseID);  // Guarda en la base de datos final
+      await handleResetResponses();  // Llamar a handleResetResponses para reiniciar responses en PouchDB
+      console.log('Navegando a ParticipantList después del envío.');
+      onNavigate('ParticipantList');  // Navega a ParticipantList
+    } else {
+      console.log('Usuario canceló el envío de la encuesta.');
+    }
   };
+  
+
 
   const handleFileChange = async (file) => {
     const fileUrl = URL.createObjectURL(file);
@@ -418,7 +435,13 @@ const SurveyForm = ({ onNavigate, participantId }) => {
   const currentQuestion = filteredQuestions && filteredQuestions.length > 0 ? filteredQuestions[currentQuestionIndex] : null;
 
   const swipeHandlers = useSwipeable({
-    onSwipedLeft: () => handleNext(),
+    onSwipedLeft: () => {
+      if (currentQuestionIndex === filteredQuestions.length - 1) {
+        handleSubmit(); // Llama a handleSubmit en la última pregunta
+      } else {
+        handleNext();
+      }
+    },
     onSwipedRight: () => handleBack()
   });
 

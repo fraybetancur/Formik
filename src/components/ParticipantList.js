@@ -66,8 +66,12 @@ const ParticipantList = ({ onNavigate }) => {
   const handleBack = () => {
     setSelectedParticipantId(null);
   };
+  
+  const { filters } = useContext(QuestionContext);
+
 
   const handleAddParticipant = () => {
+    setFilters({ ...filters, formId: 'Registro' });
     onNavigate('Formulario');
   };
 

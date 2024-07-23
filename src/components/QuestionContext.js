@@ -191,6 +191,27 @@ export const QuestionProvider = ({ children }) => {
     }
   };
 
+  const handleResetResponses = async () => {
+    try {
+      console.log('Iniciando reseteo de respuestas en localResponsesDB');
+      const allDocs = await localResponsesDB.allDocs();
+      console.log('Documentos para resetear:', allDocs.rows);
+  
+      const deleteDocs = allDocs.rows.map(row => ({
+        _id: row.id,
+        _rev: row.value.rev,
+        _deleted: true,
+      }));
+  
+      await localResponsesDB.bulkDocs(deleteDocs);
+      setResponses([]);  // Asegúrate de que el estado responses también se reinicie
+      console.log('Respuestas reseteadas en localResponsesDB');
+    } catch (error) {
+      console.error('Error restableciendo las respuestas:', error);
+    }
+  };
+  
+
   useEffect(() => {
     loadQuestions();
   }, [loadQuestions]);
@@ -230,6 +251,7 @@ export const QuestionProvider = ({ children }) => {
       syncData, 
       handleUpload,
       handleReset,
+      handleResetResponses,
       handleBackupSync,
       updateParticipant,
       error,

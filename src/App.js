@@ -88,7 +88,12 @@ const AppContent = () => {
     setCurrentComponent({ component, participantId });
     setIsMenuOpen(false);
   };
-  
+
+  const handleBack = () => {
+    console.log('handleBack called'); // Log para depuración
+    setCurrentComponent({ component: 'ParticipantList' });
+  };
+
   const renderComponent = () => {
     switch (currentComponent.component) {
       case 'MyEnhancedForm':
@@ -107,7 +112,7 @@ const AppContent = () => {
         return <ParticipantList onNavigate={handleNavigate} />;
       case 'ParticipantDetails':
         console.log('Rendering ParticipantDetails with onNavigate:', typeof handleNavigate); // Log para depuración
-        return <ParticipantDetails participantId={currentComponent.participantId} onNavigate={handleNavigate} />;
+        return <ParticipantDetails participantId={currentComponent.participantId} onBack={handleBack} onNavigate={handleNavigate} />;
       case 'PDFUploader':
         return <PDFUploader onNavigate={handleNavigate} />;
       case 'FilterForm':
@@ -126,7 +131,7 @@ const AppContent = () => {
           onRightButtonClick={handleSubHeaderToggle} 
           headerText="DM SURVEYS" 
         />
-        {isSubHeaderVisible && <SubHeader onReloadClick={handleReloadClick} />} {/* Pasar la función de recarga */}
+        {isSubHeaderVisible && <SubHeader onReloadClick={handleReloadClick} />}
         <SideMenu isOpen={isMenuOpen} onClose={handleMenuToggle} onNavigate={handleNavigate} />
         <main css={mainContentStyles}>
           <Suspense fallback={<div>Cargando...</div>}>
