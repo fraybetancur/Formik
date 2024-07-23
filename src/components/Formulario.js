@@ -20,10 +20,11 @@ import PDFViewer from './PDFViewer';
 const localResponsesDB = new PouchDB('responses');
 const finalDB = new PouchDB('finalDB');
 
-const SurveyForm = ({ onNavigate }) => {
+const SurveyForm = ({ onNavigate, participantId }) => {
   const { questions, choices, isLoading, isSyncing, responses, setResponses, currentQuestionIndex, setCurrentQuestionIndex, filters } = useContext(QuestionContext);
   const [answer, setAnswer] = useState('');
-  const [caseID] = useState(uuidv4());
+  const [caseID] = useState(participantId || uuidv4());
+  console.log('SurveyForm initialized with caseID:', caseID); // Log para verificar el caseID
   const [previewUrl, setPreviewUrl] = useState('');
   const [filteredQuestions, setFilteredQuestions] = useState([]);
 

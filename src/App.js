@@ -59,7 +59,7 @@ const mainContentStyles = css`
 const AppContent = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSubHeaderVisible, setIsSubHeaderVisible] = useState(false);
-  const { currentComponent, setCurrentComponent, setCurrentQuestionIndex } = useContext(QuestionContext);
+  const { currentComponent, setCurrentComponent, setCurrentQuestionIndex, setFilters } = useContext(QuestionContext);
 
   const handleMenuToggle = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -80,17 +80,17 @@ const AppContent = () => {
     window.location.reload();
   };
 
-  const handleNavigate = (component) => {
-    console.log('handleNavigate called with component:', component); // Log para depuración
+  const handleNavigate = (component, participantId = null) => {
+    console.log('handleNavigate called with component:', component, 'and participantId:', participantId); // Log para depuración
     if (component === 'Formulario') {
       setCurrentQuestionIndex(0);
     }
-    setCurrentComponent(component);
+    setCurrentComponent({ component, participantId });
     setIsMenuOpen(false);
   };
-
+  
   const renderComponent = () => {
-    switch (currentComponent) {
+    switch (currentComponent.component) {
       case 'MyEnhancedForm':
         return <MyEnhancedForm />;
       case 'ExcelUploader':
@@ -100,14 +100,14 @@ const AppContent = () => {
       case 'ResponsesList':
         return <ResponsesList />;
       case 'SurveyForm':
-        return <SurveyForm onNavigate={handleNavigate} />;
+        return <SurveyForm onNavigate={handleNavigate} participantId={currentComponent.participantId} />;
       case 'Formulario':
-        return <Formulario onNavigate={handleNavigate} />;
+        return <Formulario onNavigate={handleNavigate} participantId={currentComponent.participantId} />;
       case 'ParticipantList':
         return <ParticipantList onNavigate={handleNavigate} />;
       case 'ParticipantDetails':
         console.log('Rendering ParticipantDetails with onNavigate:', typeof handleNavigate); // Log para depuración
-        return <ParticipantDetails onNavigate={handleNavigate} />;
+        return <ParticipantDetails participantId={currentComponent.participantId} onNavigate={handleNavigate} />;
       case 'PDFUploader':
         return <PDFUploader onNavigate={handleNavigate} />;
       case 'FilterForm':

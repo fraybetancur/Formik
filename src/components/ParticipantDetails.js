@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
   console.log('ParticipantDetails onNavigate:', onNavigate); // Verificación
+  console.log('ParticipantDetails participantId:', participantId); // Log para depuración
   const [selectedTab, setSelectedTab] = useState(0);
   const [formData, setFormData] = useState({});
   const [extraFields, setExtraFields] = useState([]);
@@ -29,6 +30,7 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
           return acc;
         }, {});
         participantData.photo = doc.responses.find(response => response.QuestionID === 'Q05')?.Url || ''; // Ajustar si la URL es correcta
+        participantData.caseID = participantId; // Agregar el caseID al formData
         setFormData(participantData);
         setCaseNotesHistory(doc.caseNotes ? doc.caseNotes.reverse() : []);
         // Filtrar campos adicionales
@@ -101,6 +103,10 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
         </AppBar>
       </Box>
       <Box css={styles.content}>
+        {/* Mostrar el caseId al principio */}
+        <Typography variant="h6" style={{ marginBottom: '16px' }}>
+          Case ID: {participantId}
+        </Typography>
         <TabPanel value={selectedTab} index={0}>
           <BiographicTab formData={formData} handleChange={handleChange} extraFields={extraFields} />
         </TabPanel>
@@ -158,6 +164,16 @@ const BiographicTab = ({ formData, handleChange, extraFields }) => (
       </Grid>
       <Grid item xs={12} sm={8}>
         <Grid container spacing={2}>
+          <Grid item xs={12}>
+            <TextField
+              label="Case ID"
+              name="caseID"
+              value={formData.caseID || ''}
+              fullWidth
+              margin="normal"
+              disabled // Este campo no es editable
+            />
+          </Grid>
           {[
             { id: 'Q06', label: 'Apellidos' },
             { id: 'Q07', label: 'Nombres' },
@@ -259,6 +275,8 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
   const [selectedFormId, setSelectedFormId] = useState('');
   const [responses, setResponses] = useState([]); // Estado para almacenar las respuestas
   console.log('FollowUpFormsTab onNavigate:', typeof onNavigate); // Log para depuración
+  console.log('FollowUpFormsTab participantId:', participantId); // Log para depuración
+
   // Fetch follow-up forms related to the participant
   useEffect(() => {
     const fetchFollowUpForms = async () => {
@@ -332,13 +350,14 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
   const handleNavigateToForm = () => {
     setFilters({ formId: selectedFormId, participantId });
     if (typeof onNavigate === 'function') {
-      console.log('Navigating to form:', selectedFormId); // Log the navigation action
-      onNavigate('Formulario');
+      console.log('Navigating to form with formId:', selectedFormId, 'and participantId:', participantId); // Log para verificar el formId y participantId
+      onNavigate('Formulario', participantId); // Pasar participantId como caseID
     } else {
       console.error('onNavigate is not a function');
     }
   };
   
+
   return (
     <Box>
       <FormControl fullWidth margin="normal">
