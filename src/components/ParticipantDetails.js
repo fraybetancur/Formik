@@ -22,65 +22,88 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
   const [caseNotes, setCaseNotes] = useState('');
   const [caseNotesHistory, setCaseNotesHistory] = useState([]);
   const [formIds, setFormIds] = useState([]);
+  const [attachments, setAttachments] = useState([]); // Estado para almacenar los adjuntos
 
   useEffect(() => {
     const fetchParticipantData = async () => {
       try {
         setLoading(true);
         console.log('Iniciando obtención de datos de participante para participantId:', participantId);
-
-        // Consulta todos los documentos con el mismo caseID y formID = 'Registro'
-        const result = await finalDB.find({
+  
+        // Consulta para obtener datos generales del participante
+        const generalResult = await finalDB.find({
           selector: {
             caseID: participantId,
             formID: 'Registro'
           }
         });
-
-        console.log('Resultado de búsqueda en finalDB:', result.docs);
-
-        if (result.docs.length > 0) {
+  
+        console.log('Resultado de búsqueda de datos generales en finalDB:', generalResult.docs);
+  
+        if (generalResult.docs.length > 0) {
           const participantData = {};
           const caseNotesList = [];
           let photoUrl = '';
-
-          result.docs.forEach(doc => {
+  
+          generalResult.docs.forEach(doc => {
             console.log('Documento del participante encontrado:', doc);
-
+  
             doc.responses.forEach(response => {
               participantData[response.QuestionID] = response.Response;
               if (response.QuestionID === 'Q05' && response.Url) {
                 photoUrl = response.Url; // Obtiene la URL de la foto
               }
             });
-
+  
             if (doc.caseNotes) {
               caseNotesList.push(...doc.caseNotes.reverse());
             }
           });
-
+  
           participantData.photo = photoUrl || ''; // Asigna la URL de la foto
           participantData.caseID = participantId; // Agregar el caseID al formData
           setFormData(participantData);
           setCaseNotesHistory(caseNotesList);
-          setExtraFields(result.docs.flatMap(doc => doc.responses.filter(response => response.QuestionID.startsWith('extra'))));
+          setExtraFields(generalResult.docs.flatMap(doc => doc.responses.filter(response => response.QuestionID.startsWith('extra'))));
         } else {
           throw new Error('No participant data found');
         }
+  
+        // Consulta para obtener los adjuntos del participante
+        const attachmentsResult = await finalDB.find({
+          selector: {
+            caseID: participantId,
+            Url: { $exists: true } // Asegura que se incluyan solo los documentos con una URL, indicando que son adjuntos
+          }
+        });
 
+        console.log('Resultado de búsqueda de adjuntos en finalDB:', attachmentsResult.docs);
+
+        if (attachmentsResult.docs.length > 0) {
+          const attachments = attachmentsResult.docs.map(doc => ({
+            name: doc._id, // O extrae un nombre más descriptivo si está disponible
+            url: doc.Url
+          }));
+          setAttachments(attachments); // Establece los adjuntos directamente con el nuevo mapeo
+          console.log('Adjuntos asignados:', attachments); // Log para verificar los adjuntos asignados
+        }
+
+
+  
         setLoading(false);
       } catch (err) {
         setError(`Error fetching participant data from finalDB: ${err.message}`);
         setLoading(false);
       }
     };
-
+  
     if (participantId) {
       fetchParticipantData();
     } else {
       setLoading(false);
     }
   }, [participantId]);
+  
 
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
@@ -131,6 +154,7 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
             <Tab label="Biographic" css={selectedTab === 0 ? styles.selectedTab : styles.tab} />
             <Tab label="Case Notes" css={selectedTab === 1 ? styles.selectedTab : styles.tab} />
             <Tab label="Follow-up Forms" css={selectedTab === 2 ? styles.selectedTab : styles.tab} />
+            <Tab label="Attachments" css={selectedTab === 3 ? styles.selectedTab : styles.tab} />
           </Tabs>
         </AppBar>
       </Box>
@@ -143,6 +167,9 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
         </TabPanel>
         <TabPanel value={selectedTab} index={2}>
           <FollowUpFormsTab participantId={participantId} onNavigate={onNavigate} />
+        </TabPanel>
+        <TabPanel value={selectedTab} index={3}>
+          <AttachmentsTab attachments={attachments} />
         </TabPanel>
       </Box>
       <Box css={styles.footer}>
@@ -434,6 +461,36 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
   );
 };
 
+const AttachmentsTab = ({ attachments }) => (
+  <Box>
+    <Typography variant="h6" style={{ marginTop: '16px' }}>
+      Attachments
+    </Typography>
+    <List>
+      {attachments && attachments.length > 0 ? (
+        attachments.map((attachment, index) => (
+          <ListItem key={index}>
+            <ListItemText primary={attachment.name || 'Unnamed Attachment'} />
+            <ListItemSecondaryAction>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => window.open(attachment.url, '_blank')}
+              >
+                View
+              </Button>
+            </ListItemSecondaryAction>
+          </ListItem>
+        ))
+      ) : (
+        <Typography variant="body2" color="textSecondary">
+          No attachments available.
+        </Typography>
+      )}
+    </List>
+  </Box>
+);
+
 const savedResponsesStyle = css`
   margin-top: 2rem;
 `;
@@ -489,4 +546,5 @@ const styles = {
   `,
 };
 
-export default ParticipantDetails;
+// Exporta ambos componentes individualmente
+export { ParticipantDetails, AttachmentsTab };

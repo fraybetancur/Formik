@@ -5,7 +5,8 @@ import { Box } from '@mui/material';
 import { finalDB, QuestionContext } from './QuestionContext';
 import { TextField, List, ListItem, Avatar, CircularProgress, Card, CardContent, Fab, Grid, Typography, Divider, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import ParticipantDetails from './ParticipantDetails';
+import { ParticipantDetails } from './ParticipantDetails';
+
 
 const ParticipantList = ({ onNavigate }) => {
   const [participants, setParticipants] = useState([]);

@@ -9,7 +9,7 @@ import SurveyForm from './components/Survey';
 import SubHeader from './components/SubHeader';
 import Formulario from './components/Formulario';
 import ParticipantList from './components/ParticipantList';
-import ParticipantDetails from './components/ParticipantDetails';
+import { ParticipantDetails } from './components/ParticipantDetails';
 import PDFUploader from './components/PDFUploader';
 import FilterForm from './components/FilterForm';
 
@@ -151,3 +151,4 @@ const App = () => (
 );
 
 export default App;
+  
