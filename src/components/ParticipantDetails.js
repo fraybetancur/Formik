@@ -1,12 +1,13 @@
 /** @jsxImportSource @emotion/react */
 import React, { useState, useEffect, useContext } from 'react';
-import { AppBar, Tabs, Tab, Box, Grid, TextField, Avatar, Button, MenuItem, Typography, IconButton, Divider, FormControl, InputLabel, Select, List, ListItem, ListItemText, ListItemSecondaryAction } from '@mui/material'; // Importa los componentes necesarios
+import { AppBar, Tabs, Tab, Box, Grid, TextField, Avatar, Button, MenuItem, Typography, IconButton, Divider, FormControl, InputLabel, Select, List, ListItem, ListItemText, ListItemSecondaryAction } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
-import { finalDB, QuestionContext, localSurveyDB } from './QuestionContext'; // Importa la base de datos local de encuestas
+import { finalDB, QuestionContext, localSurveyDB } from './QuestionContext';
 import { css } from '@emotion/react';
 import { v4 as uuidv4 } from 'uuid';
+import PDFViewer from './PDFViewer'; // Asegúrate de tener este componente
 
 const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
   console.log('ParticipantDetails onNavigate:', onNavigate); // Verificación
@@ -29,7 +30,7 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
       try {
         setLoading(true);
         console.log('Iniciando obtención de datos de participante para participantId:', participantId);
-  
+
         // Consulta para obtener datos generales del participante
         const generalResult = await finalDB.find({
           selector: {
@@ -37,29 +38,29 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
             formID: 'Registro'
           }
         });
-  
+
         console.log('Resultado de búsqueda de datos generales en finalDB:', generalResult.docs);
-  
+
         if (generalResult.docs.length > 0) {
           const participantData = {};
           const caseNotesList = [];
           let photoUrl = '';
-  
+
           generalResult.docs.forEach(doc => {
             console.log('Documento del participante encontrado:', doc);
-  
+
             doc.responses.forEach(response => {
               participantData[response.QuestionID] = response.Response;
               if (response.QuestionID === 'Q05' && response.Url) {
                 photoUrl = response.Url; // Obtiene la URL de la foto
               }
             });
-  
+
             if (doc.caseNotes) {
               caseNotesList.push(...doc.caseNotes.reverse());
             }
           });
-  
+
           participantData.photo = photoUrl || ''; // Asigna la URL de la foto
           participantData.caseID = participantId; // Agregar el caseID al formData
           setFormData(participantData);
@@ -68,11 +69,27 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
         } else {
           throw new Error('No participant data found');
         }
-  
-        // Consulta para obtener los adjuntos del participante
+
+        setLoading(false);
+      } catch (err) {
+        setError(`Error fetching participant data from finalDB: ${err.message}`);
+        setLoading(false);
+      }
+    };
+
+    if (participantId) {
+      fetchParticipantData();
+    } else {
+      setLoading(false);
+    }
+  }, [participantId]);
+
+  useEffect(() => {
+    const fetchAttachments = async () => {
+      try {
         const attachmentsResult = await finalDB.find({
           selector: {
-            caseID: participantId,
+            CaseID: participantId,
             Url: { $exists: true } // Asegura que se incluyan solo los documentos con una URL, indicando que son adjuntos
           }
         });
@@ -87,23 +104,15 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
           setAttachments(attachments); // Establece los adjuntos directamente con el nuevo mapeo
           console.log('Adjuntos asignados:', attachments); // Log para verificar los adjuntos asignados
         }
-
-
-  
-        setLoading(false);
       } catch (err) {
-        setError(`Error fetching participant data from finalDB: ${err.message}`);
-        setLoading(false);
+        setError(`Error fetching attachments: ${err.message}`);
       }
     };
-  
+
     if (participantId) {
-      fetchParticipantData();
-    } else {
-      setLoading(false);
+      fetchAttachments();
     }
   }, [participantId]);
-  
 
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
@@ -199,7 +208,7 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
 
 const TabPanel = (props) => {
   const { children, value, index, ...other } = props;
-  console.log('ParticipantDetails onNavigate:', typeof onNavigate); // Log para depuración
+
   return (
     <div
       role="tabpanel"
@@ -338,11 +347,8 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
   const [followUpForms, setFollowUpForms] = useState([]);
   const [formIds, setFormIds] = useState([]);
   const [selectedFormId, setSelectedFormId] = useState('');
-  const [responses, setResponses] = useState([]); // Estado para almacenar las respuestas
-  console.log('FollowUpFormsTab onNavigate:', typeof onNavigate); // Log para depuración
-  console.log('FollowUpFormsTab participantId:', participantId); // Log para depuración
+  const [responses, setResponses] = useState([]); 
 
-  // Fetch follow-up forms related to the participant
   useEffect(() => {
     const fetchFollowUpForms = async () => {
       try {
@@ -351,7 +357,6 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
             caseID: participantId,
           },
         });
-        console.log('Follow-up forms fetched:', result.docs); // Log the fetched follow-up forms
         setFollowUpForms(result.docs);
       } catch (error) {
         console.error('Error fetching follow-up forms:', error);
@@ -361,14 +366,11 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
     fetchFollowUpForms();
   }, [participantId]);
 
-  // Fetch unique form IDs from the survey database
   useEffect(() => {
     const fetchFormIds = async () => {
       try {
         const allForms = await localSurveyDB.allDocs({ include_docs: true });
         const uniqueFormIds = [...new Set(allForms.rows.map(row => row.doc.FormID).filter(formId => formId && formId !== 'Registro'))];
-        console.log('All Forms:', allForms.rows.map(row => row.doc)); // Log all forms
-        console.log('Unique Form IDs:', uniqueFormIds); // Log the unique form IDs
         setFormIds(uniqueFormIds);
       } catch (error) {
         console.error('Error fetching form IDs:', error);
@@ -378,12 +380,10 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
     fetchFormIds();
   }, []);
 
-  // Fetch responses from the local survey database for debugging
   useEffect(() => {
     const fetchResponses = async () => {
       try {
         const allResponses = await localSurveyDB.allDocs({ include_docs: true });
-        console.log('Responses fetched:', allResponses.rows.map(row => row.doc)); // Log the fetched responses
         setResponses(allResponses.rows.map(row => row.doc));
       } catch (error) {
         console.error('Error fetching responses:', error);
@@ -405,7 +405,6 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
     try {
       await finalDB.put(newForm);
       setFollowUpForms([...followUpForms, newForm]);
-      console.log('New follow-up form added:', newForm); // Log the added follow-up form
     } catch (error) {
       console.error('Error adding follow-up form:', error);
     }
@@ -414,14 +413,12 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
   const handleNavigateToForm = (formId) => {
     setFilters({ formId: formId, participantId });
     if (typeof onNavigate === 'function') {
-      console.log('Navigating to form with formId:', formId, 'and participantId:', participantId); // Log para verificar el formId y participantId
-      onNavigate('Formulario', participantId); // Pasar participantId como caseID
+      onNavigate('Formulario', participantId); 
     } else {
       console.error('onNavigate is not a function');
     }
   };
 
-  // Definir la función isFormCompleted aquí
   const isFormCompleted = (formId) => {
     return followUpForms.some(form => form.formID === formId);
   };
@@ -460,48 +457,44 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
     </Box>
   );
 };
+const AttachmentsTab = ({ attachments }) => {
+  const [selectedAttachment, setSelectedAttachment] = useState(null);
 
-const AttachmentsTab = ({ attachments }) => (
-  <Box>
-    <Typography variant="h6" style={{ marginTop: '16px' }}>
-      Attachments
-    </Typography>
-    <List>
-      {attachments && attachments.length > 0 ? (
-        attachments.map((attachment, index) => (
-          <ListItem key={index}>
-            <ListItemText primary={attachment.name || 'Unnamed Attachment'} />
-            <ListItemSecondaryAction>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => window.open(attachment.url, '_blank')}
-              >
-                View
-              </Button>
-            </ListItemSecondaryAction>
-          </ListItem>
-        ))
-      ) : (
-        <Typography variant="body2" color="textSecondary">
-          No attachments available.
-        </Typography>
+  return (
+    <Box>
+      <Typography variant="h6" style={{ marginTop: '16px' }}>
+        Attachments
+      </Typography>
+      <List>
+        {attachments && attachments.length > 0 ? (
+          attachments.map((attachment, index) => (
+            <ListItem key={index} onClick={() => setSelectedAttachment(attachment.url)}>
+              <ListItemText primary={attachment.name || 'Unnamed Attachment'} />
+              <ListItemSecondaryAction>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => setSelectedAttachment(attachment.url)}
+                >
+                  View
+                </Button>
+              </ListItemSecondaryAction>
+            </ListItem>
+          ))
+        ) : (
+          <Typography variant="body2" color="textSecondary">
+            No attachments available.
+          </Typography>
+        )}
+      </List>
+      {selectedAttachment && (
+        <Box css={{ height: '500px', width: '100%', marginTop: '16px' }}>
+          <PDFViewer fileUrl={selectedAttachment} />
+        </Box>
       )}
-    </List>
-  </Box>
-);
-
-const savedResponsesStyle = css`
-  margin-top: 2rem;
-`;
-
-const responsePreStyle = css`
-  background: #f6f8fa;
-  padding: 1rem;
-  border-radius: 4px;
-  max-height: 300px;
-  overflow-y: auto;
-`;
+    </Box>
+  );
+};
 
 const styles = {
   container: css`
