@@ -5,6 +5,7 @@ import { css } from '@emotion/react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
+import OfflineLayer from './OfflineLayer'; // Importa la capa OfflineLayer
 
 const GeoMap = ({ onShapeComplete }) => {
   const [viewport, setViewport] = useState({
@@ -17,7 +18,7 @@ const GeoMap = ({ onShapeComplete }) => {
 
   const [mapStyle, setMapStyle] = useState('mapbox://styles/mapbox/streets-v11');
   const [currentLocation, setCurrentLocation] = useState(null);
-  const [mode, setMode] = useState('draw_polygon');
+  const [mode, setMode] = useState('draw_point');
   const mapRef = useRef(null);
   const draw = useRef(
     new MapboxDraw({
@@ -28,7 +29,7 @@ const GeoMap = ({ onShapeComplete }) => {
         polygon: true,
         trash: true,
       },
-      defaultMode: mode,
+      defaultMode: 'draw_point', // Predeterminado a Geopoint
     })
   );
 
@@ -57,7 +58,7 @@ const GeoMap = ({ onShapeComplete }) => {
         ...prev,
         latitude,
         longitude,
-        zoom: 15,
+        zoom: 13, // Asegurarse de que el zoom se aplica correctamente
       }));
     });
   }, []);
@@ -79,11 +80,7 @@ const GeoMap = ({ onShapeComplete }) => {
   const handleModeChange = (event) => {
     const newMode = event.target.value;
     setMode(newMode);
-    if (newMode === 'direct_select') {
-      alert("Seleccione una característica existente para editar.");
-    } else {
-      draw.current.changeMode(newMode);
-    }
+    draw.current.changeMode(newMode);
   };
 
   const startTracking = () => {
@@ -144,7 +141,7 @@ const GeoMap = ({ onShapeComplete }) => {
         ref={mapRef}
         dragPan={true}
         touchZoomRotate={true}
-        onMove={evt => setViewport(evt.viewState)}
+        onMove={(evt) => setViewport(evt.viewState)}
       >
         <GeolocateControl
           positionOptions={{ enableHighAccuracy: true }}
@@ -169,6 +166,8 @@ const GeoMap = ({ onShapeComplete }) => {
             />
           </Marker>
         )}
+        {/* Integración de la capa offline personalizada */}
+        <OfflineLayer />
       </Map>
     </div>
   );

@@ -2,6 +2,9 @@
 /* eslint-disable no-unused-expressions */
 
 import { precacheAndRoute } from 'workbox-precaching';
+import { registerRoute } from 'workbox-routing';
+import { CacheFirst } from 'workbox-strategies';
+import { ExpirationPlugin } from 'workbox-expiration';
 
 // This line automatically injects the manifest with the current build assets
 precacheAndRoute(self.__WB_MANIFEST);
@@ -37,6 +40,20 @@ self.addEventListener('fetch', event => {
     })
   );
 });
+
+// Cache Mapbox tiles
+registerRoute(
+  ({ url }) => url.origin === 'https://api.mapbox.com' || url.origin === 'https://a.tiles.mapbox.com' || url.origin === 'https://b.tiles.mapbox.com' || url.origin === 'https://c.tiles.mapbox.com' || url.origin === 'https://d.tiles.mapbox.com',
+  new CacheFirst({
+    cacheName: 'mapbox-tiles',
+    plugins: [
+      new ExpirationPlugin({
+        maxAgeSeconds: 30 * 24 * 60 * 60, // Cache for 30 Days
+        maxEntries: 100, // Only cache 100 tiles
+      }),
+    ],
+  })
+);
 
 /* eslint-enable no-restricted-globals */
 /* eslint-enable no-unused-expressions */
