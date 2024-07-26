@@ -240,6 +240,22 @@ const SurveyForm = ({ onNavigate, participantId }) => {
 
   const generateResponseId = (caseID, questionID) => `${caseID}-${questionID}-${uuidv4()}`;
 
+  const handleShapeComplete = async (shape) => {
+    const response = {
+      _id: generateResponseId(caseID, filteredQuestions[currentQuestionIndex].QuestionID),
+      CaseID: caseID,
+      ParentCaseID: caseID,
+      CaseDetails: '',
+      QuestionID: filteredQuestions[currentQuestionIndex].QuestionID,
+      FormID: filters.formId,
+      Index: currentQuestionIndex,
+      ResponseID: uuidv4(),
+      Response: JSON.stringify(shape),
+    };
+
+    console.log('Guardando forma geográfica:', response);
+    await saveResponse(response);
+  };
 
   const handleNext = async () => {
     if (filteredQuestions[currentQuestionIndex].Required === 'true') {
@@ -318,11 +334,6 @@ const SurveyForm = ({ onNavigate, participantId }) => {
       setAnswer(previousResponse ? previousResponse.Response : '');
     }
   };
-  
-
-
-  
-  
 
   const saveSurveyToFinalDB = async (caseID) => {
     try {
@@ -347,7 +358,6 @@ const SurveyForm = ({ onNavigate, participantId }) => {
       console.error('Error al guardar la encuesta en finalDB:', error);
     }
   };
-  
 
   // Reemplaza la función handleSubmit por la siguiente:
   const handleSubmit = async () => {
@@ -363,8 +373,6 @@ const SurveyForm = ({ onNavigate, participantId }) => {
       console.log('Usuario canceló el envío de la encuesta.');
     }
   };
-  
-
 
   // Guardar archivo en localResponsesDB y luego transferirlo a finalDB
 const handleFileChange = async (file) => {
@@ -401,7 +409,6 @@ const handleFileChange = async (file) => {
     console.error("Error al guardar el archivo en PouchDB:", error);
   }
 };
-
 
   const handleImageUpload = async (imageFile, previewDataUrl) => {
     const responseId = uuidv4();
@@ -564,9 +571,8 @@ const handleFileChange = async (file) => {
                   />
                 )}
                 {currentQuestion.ResponseType === 'Mapa' && (
-                  <GeoMap />
+                  <GeoMap onShapeComplete={handleShapeComplete} />
                 )}
-
                 {currentQuestion.ResponseType === 'Entrada de lápiz' && (
                   <TextInput value={answer} onChange={(e) => handleResponseChange(e.target.value)} />
                 )}
