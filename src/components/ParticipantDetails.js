@@ -90,29 +90,40 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
         const attachmentsResult = await finalDB.find({
           selector: {
             CaseID: participantId,
-            Url: { $exists: true } // Asegura que se incluyan solo los documentos con una URL, indicando que son adjuntos
+            _attachments: { $exists: true }
           }
         });
-
+  
         console.log('Resultado de búsqueda de adjuntos en finalDB:', attachmentsResult.docs);
-
+  
         if (attachmentsResult.docs.length > 0) {
-          const attachments = attachmentsResult.docs.map(doc => ({
-            name: doc._id, // O extrae un nombre más descriptivo si está disponible
-            url: doc.Url
+          const attachments = await Promise.all(attachmentsResult.docs.map(async (doc) => {
+            const attachmentNames = Object.keys(doc._attachments);
+            const attachmentPromises = attachmentNames.map(async (name) => {
+              const attachment = await finalDB.getAttachment(doc._id, name);
+              const blobUrl = URL.createObjectURL(attachment);
+              return { name, url: blobUrl };
+            });
+            return Promise.all(attachmentPromises);
           }));
-          setAttachments(attachments); // Establece los adjuntos directamente con el nuevo mapeo
-          console.log('Adjuntos asignados:', attachments); // Log para verificar los adjuntos asignados
+  
+          // Aplanar la lista de adjuntos
+          const flatAttachments = attachments.flat();
+          setAttachments(flatAttachments);
+          console.log('Adjuntos asignados:', flatAttachments);
+        } else {
+          console.log('No se encontraron adjuntos.');
         }
       } catch (err) {
         setError(`Error fetching attachments: ${err.message}`);
       }
     };
-
+  
     if (participantId) {
       fetchAttachments();
     }
   }, [participantId]);
+  
 
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);

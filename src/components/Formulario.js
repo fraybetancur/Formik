@@ -375,40 +375,41 @@ const SurveyForm = ({ onNavigate, participantId }) => {
   };
 
   // Guardar archivo en localResponsesDB y luego transferirlo a finalDB
-const handleFileChange = async (file) => {
-  const fileUrl = URL.createObjectURL(file);
-  setPreviewUrl(fileUrl);
-  const responseId = uuidv4();
-  const fileResponse = {
-    _id: responseId,
-    type: file.type.split('/')[0],
-    CaseID: caseID,
-    ParentCaseID: caseID,
-    CaseDetails: '',
-    QuestionID: filteredQuestions[currentQuestionIndex].QuestionID,
-    Index: currentQuestionIndex,
-    ResponseID: responseId,
-    Response: '',
-    Url: fileUrl,
+  const handleFileChange = async (file) => {
+    const fileUrl = URL.createObjectURL(file);
+    setPreviewUrl(fileUrl);
+    const responseId = uuidv4();
+    const fileResponse = {
+      _id: responseId,
+      type: file.type.split('/')[0],
+      CaseID: caseID,
+      ParentCaseID: caseID,
+      CaseDetails: '',
+      QuestionID: filteredQuestions[currentQuestionIndex].QuestionID,
+      Index: currentQuestionIndex,
+      ResponseID: responseId,
+      Response: '',
+      Url: fileUrl, // Esto es temporal
+    };
+  
+    try {
+      // Guardar en localResponsesDB
+      await localResponsesDB.put(fileResponse); // Guardar respuesta sin el adjunto.
+      const doc = await localResponsesDB.get(responseId); // Obtener el documento para agregar el adjunto.
+      await localResponsesDB.putAttachment(doc._id, file.name, doc._rev, file, file.type); // Guardar el archivo como adjunto.
+  
+      // Guardar en finalDB
+      await finalDB.put(fileResponse); // Guardar respuesta sin el adjunto.
+      const finalDoc = await finalDB.get(responseId); // Obtener el documento para agregar el adjunto.
+      await finalDB.putAttachment(finalDoc._id, file.name, finalDoc._rev, file, file.type); // Guardar el archivo como adjunto.
+  
+      setResponses([...responses, fileResponse]); // Actualizar el estado de las respuestas.
+      console.log('Archivo guardado:', fileResponse);
+    } catch (error) {
+      console.error("Error al guardar el archivo en PouchDB:", error);
+    }
   };
-
-  try {
-    // Guardar en localResponsesDB
-    await localResponsesDB.put(fileResponse); // Guardar respuesta sin el adjunto.
-    const doc = await localResponsesDB.get(responseId); // Obtener el documento para agregar el adjunto.
-    await localResponsesDB.putAttachment(doc._id, file.name, doc._rev, file, file.type); // Guardar el archivo como adjunto.
-
-    // Guardar en finalDB
-    await finalDB.put(fileResponse); // Guardar respuesta sin el adjunto.
-    const finalDoc = await finalDB.get(responseId); // Obtener el documento para agregar el adjunto.
-    await finalDB.putAttachment(finalDoc._id, file.name, finalDoc._rev, file, file.type); // Guardar el archivo como adjunto.
-
-    setResponses([...responses, fileResponse]); // Actualizar el estado de las respuestas.
-    console.log('Archivo guardado:', fileResponse);
-  } catch (error) {
-    console.error("Error al guardar el archivo en PouchDB:", error);
-  }
-};
+  
 
   const handleImageUpload = async (imageFile, previewDataUrl) => {
     const responseId = uuidv4();
