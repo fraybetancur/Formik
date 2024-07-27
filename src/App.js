@@ -12,6 +12,7 @@ import ParticipantList from './components/ParticipantList';
 import { ParticipantDetails } from './components/ParticipantDetails';
 import PDFUploader from './components/PDFUploader';
 import FilterForm from './components/FilterForm';
+import CacheDownloader from './components/CacheDownloader';
 
 const MyEnhancedForm = lazy(() => import('./components/formik-demo'));
 const ExcelUploader = lazy(() => import('./components/ExcelUploader'));
@@ -100,6 +101,8 @@ const AppContent = () => {
         return <MyEnhancedForm />;
       case 'ExcelUploader':
         return <ExcelUploader />;
+      case 'CacheDownloader':
+        return <CacheDownloader onNavigate={handleNavigate} />;
       case 'DataSync':
         return <DataSync />;
       case 'ResponsesList':

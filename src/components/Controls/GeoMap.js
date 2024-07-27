@@ -9,8 +9,8 @@ import OfflineLayer from './OfflineLayer'; // Importa la capa OfflineLayer
 
 const GeoMap = ({ geometries = [], onShapeComplete }) => {
   const [viewport, setViewport] = useState({
-    latitude: -74.05,
-    longitude: 4.66,
+    latitude: 4.66,
+    longitude: -74.05,
     zoom: 13,
     width: '100%',
     height: '400px',
@@ -36,6 +36,7 @@ const GeoMap = ({ geometries = [], onShapeComplete }) => {
   useEffect(() => {
     const map = mapRef.current && mapRef.current.getMap();
     if (map) {
+      console.log('Adding draw control to map');
       map.addControl(draw.current);
 
       map.on('draw.create', updateArea);
@@ -43,6 +44,7 @@ const GeoMap = ({ geometries = [], onShapeComplete }) => {
       map.on('draw.update', updateArea);
 
       return () => {
+        console.log('Removing draw control from map');
         map.off('draw.create', updateArea);
         map.off('draw.delete', updateArea);
         map.off('draw.update', updateArea);
@@ -53,6 +55,7 @@ const GeoMap = ({ geometries = [], onShapeComplete }) => {
   useEffect(() => {
     navigator.geolocation.getCurrentPosition((position) => {
       const { latitude, longitude } = position.coords;
+      console.log('Current position:', { latitude, longitude });
       setCurrentLocation({ latitude, longitude });
       setViewport((prev) => ({
         ...prev,
@@ -65,8 +68,10 @@ const GeoMap = ({ geometries = [], onShapeComplete }) => {
 
   const updateArea = (e) => {
     const data = draw.current.getAll();
+    console.log('Draw event data:', data);
     if (data.features.length > 0) {
       const shape = data.features[0].geometry;
+      console.log('Shape created/updated:', shape);
       onShapeComplete && onShapeComplete(shape);
     } else {
       onShapeComplete && onShapeComplete(null);
@@ -88,6 +93,7 @@ const GeoMap = ({ geometries = [], onShapeComplete }) => {
       navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
+          console.log('Tracking position:', { latitude, longitude });
           setCurrentLocation({ latitude, longitude });
           draw.current.add({
             type: 'Feature',
@@ -102,7 +108,7 @@ const GeoMap = ({ geometries = [], onShapeComplete }) => {
             longitude,
           }));
         },
-        (error) => console.error(error),
+        (error) => console.error('Geolocation error:', error),
         { enableHighAccuracy: true }
       );
     } else {
@@ -115,6 +121,8 @@ const GeoMap = ({ geometries = [], onShapeComplete }) => {
       startTracking();
     }
   }, [mode]);
+
+  console.log('Geometries:', geometries);
 
   return (
     <div css={mapContainerStyle}>
@@ -166,15 +174,26 @@ const GeoMap = ({ geometries = [], onShapeComplete }) => {
             />
           </Marker>
         )}
-        {geometries.map((geometry, index) => (
-          <Source key={index} type="geojson" data={geometry}>
-            <Layer
-              id={`layer-${index}`}
-              type={geometry.type === 'Point' ? 'circle' : 'fill'}
-              paint={geometry.type === 'Point' ? { 'circle-radius': 5, 'circle-color': 'red' } : { 'fill-color': '#007bff', 'fill-opacity': 0.1 }}
-            />
-          </Source>
-        ))}
+        {geometries.map((geometry, index) => {
+          console.log('Rendering geometry:', geometry);
+          return (
+            <Source key={index} type="geojson" data={{ type: 'Feature', geometry }}>
+              <Layer
+                id={`layer-${index}`}
+                type={geometry.type === 'Point' ? 'circle' : 'fill'}
+                paint={
+                  geometry.type === 'Point' 
+                  ? { 
+                      'circle-radius': 10, 
+                      'circle-color': 'red', 
+                      'circle-opacity': 0.5  // Añade esta línea para dar transparencia al color del círculo
+                    } 
+                  : { 'fill-color': '#007bff', 'fill-opacity': 0.1 }
+                }
+              />
+            </Source>
+          );
+        })}
         <OfflineLayer />
       </Map>
     </div>

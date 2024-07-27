@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import React, { useState, useEffect, useContext } from 'react';
-import { AppBar, Tabs, Tab, Box, Grid, TextField, Avatar, Button, MenuItem, Typography, IconButton, Divider, List, ListItem, ListItemText, ListItemSecondaryAction } from '@mui/material';
+import { AppBar, Tabs, Tab, Box, Grid, TextField, Avatar, Button, MenuItem, Typography, IconButton, Divider, List, ListItem, ListItemText, ListItemSecondaryAction, Tooltip } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
@@ -37,29 +37,54 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
             formID: 'Registro'
           }
         });
-
+  
         if (generalResult.docs.length > 0) {
           const participantData = {};
           const caseNotesList = [];
           let photoUrl = '';
           const geoData = [];
-
+  
           generalResult.docs.forEach(doc => {
+            // Depuración: Verifica el contenido de cada doc
+            console.log('Document:', doc);
+  
+            // Extraer coordenadas del campo 'responses'
             doc.responses.forEach(response => {
               participantData[response.QuestionID] = response.Response;
+  
+              // Verifica si el campo Url está presente para imágenes
               if (response.QuestionID === 'Q05' && response.Url) {
                 photoUrl = response.Url;
               }
+  
+              // Verifica si la respuesta contiene coordenadas
               if (response.Response && response.Response.includes('coordinates')) {
-                geoData.push(JSON.parse(response.Response));
+                try {
+                  const parsedResponse = JSON.parse(response.Response);
+                  geoData.push(parsedResponse);
+                  console.log('Parsed Coordinates:', parsedResponse);
+                } catch (error) {
+                  console.error('Error parsing coordinates:', error);
+                }
               }
             });
-
+  
+            // Extraer coordenadas del campo 'location'
+            if (doc.location) {
+              try {
+                const parsedLocation = JSON.parse(doc.location);
+                geoData.push(parsedLocation);
+                console.log('Location Data:', parsedLocation);
+              } catch (error) {
+                console.error('Error parsing location:', error);
+              }
+            }
+  
             if (doc.caseNotes) {
               caseNotesList.push(...doc.caseNotes.reverse());
             }
           });
-
+  
           participantData.photo = photoUrl || '';
           participantData.caseID = participantId;
           setFormData(participantData);
@@ -69,20 +94,22 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
         } else {
           throw new Error('No participant data found');
         }
-
+  
         setLoading(false);
       } catch (err) {
         setError(`Error fetching participant data from finalDB: ${err.message}`);
         setLoading(false);
       }
     };
-
+  
     if (participantId) {
       fetchParticipantData();
     } else {
       setLoading(false);
     }
   }, [participantId]);
+  
+  
 
   useEffect(() => {
     const fetchAttachments = async () => {
@@ -164,11 +191,56 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
       <Box css={styles.tabsContainer}>
         <AppBar position="static">
           <Tabs value={selectedTab} onChange={handleTabChange}>
-            <Tab icon={<PersonIcon style={{ color: selectedTab === 0 ? 'grey' : 'white' }} />} />
-            <Tab icon={<NoteIcon style={{ color: selectedTab === 1 ? 'grey' : 'white' }} />} />
-            <Tab icon={<CheckIcon style={{ color: selectedTab === 2 ? 'grey' : 'white' }} />} />
-            <Tab icon={<AttachFileIcon style={{ color: selectedTab === 3 ? 'grey' : 'white' }} />} />
-            <Tab icon={<LocationOnIcon style={{ color: selectedTab === 4 ? 'grey' : 'white' }} />} />
+            <Tooltip title="Biographic Data">
+              <Tab
+                icon={<PersonIcon />}
+                sx={{ 
+                  minWidth: '0px', 
+                  color: selectedTab === 0 ? 'grey' : 'white',
+                  '&.Mui-selected': { color: 'grey' }, // Asegúrate de aplicar el color gris cuando está seleccionado
+                }}
+              />
+            </Tooltip>
+            <Tooltip title="Case Notes">
+              <Tab
+                icon={<NoteIcon />}
+                sx={{ 
+                  minWidth: '0px', 
+                  color: selectedTab === 1 ? 'grey' : 'white',
+                  '&.Mui-selected': { color: 'grey' }, // Asegúrate de aplicar el color gris cuando está seleccionado
+                }}
+              />
+            </Tooltip>
+            <Tooltip title="Checklist">
+              <Tab
+                icon={<CheckIcon />}
+                sx={{ 
+                  minWidth: '0px', 
+                  color: selectedTab === 2 ? 'grey' : 'white',
+                  '&.Mui-selected': { color: 'grey' }, // Asegúrate de aplicar el color gris cuando está seleccionado
+                }}
+              />
+            </Tooltip>
+            <Tooltip title="Attachments">
+              <Tab
+                icon={<AttachFileIcon />}
+                sx={{ 
+                  minWidth: '0px', 
+                  color: selectedTab === 3 ? 'grey' : 'white',
+                  '&.Mui-selected': { color: 'grey' }, // Asegúrate de aplicar el color gris cuando está seleccionado
+                }}
+              />
+            </Tooltip>
+            <Tooltip title="Location Data">
+              <Tab
+                icon={<LocationOnIcon />}
+                sx={{ 
+                  minWidth: '0px', 
+                  color: selectedTab === 4 ? 'grey' : 'white',
+                  '&.Mui-selected': { color: 'grey' }, // Asegúrate de aplicar el color gris cuando está seleccionado
+                }}
+              />
+            </Tooltip>
           </Tabs>
         </AppBar>
       </Box>
@@ -489,6 +561,11 @@ const AttachmentsTab = ({ attachments }) => {
 };
 
 const styles = {
+  appBar: css`
+    && .MuiTab-root {
+      min-width: 0px !important;
+    }
+  `,
   container: css`
     display: flex;
     flex-direction: column;
@@ -496,11 +573,12 @@ const styles = {
     width: 100%;
     overflow: hidden;
   `,
+  
   tabsContainer: css`
     position: fixed;
     z-index: 1000;
     width: 100%;
-    margin-top: 30px;
+    margin-top: 20px;
   `,
   content: css`
     flex: 1;

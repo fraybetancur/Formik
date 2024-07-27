@@ -335,44 +335,83 @@ const SurveyForm = ({ onNavigate, participantId }) => {
     }
   };
 
-  const saveSurveyToFinalDB = async (caseID) => {
-    try {
-      console.log('Iniciando guardado de encuesta en finalDB para caseID:', caseID);
-      const allResponses = await localResponsesDB.find({
-        selector: { CaseID: caseID }
-      });
-  
-      console.log('Respuestas obtenidas para guardar:', allResponses.docs);
-  
-      const surveyData = {
-        _id: uuidv4(),
-        caseID: caseID,
-        formID: filters.formId,
-        responses: allResponses.docs,
-        timestamp: new Date().toISOString(),
-      };
-  
-      await finalDB.put(surveyData);
-      console.log('Encuesta guardada en finalDB:', surveyData);
-    } catch (error) {
-      console.error('Error al guardar la encuesta en finalDB:', error);
-    }
-  };
+// Obtener la ubicación actual
+const getLocation = async () => {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const location = {
+          coordinates: [position.coords.longitude, position.coords.latitude], // [longitude, latitude] para GeoJSON
+          type: 'Point'
+        };
+        resolve(JSON.stringify(location));
+      },
+      (error) => reject(error),
+      { timeout: 10000 }
+    );
+  });
+};
 
-  // Reemplaza la función handleSubmit por la siguiente:
-  const handleSubmit = async () => {
-    // Mostrar mensaje de confirmación
-    const confirmed = window.confirm('¿Deseas enviar la encuesta?');
-    if (confirmed) {
-      console.log('Usuario confirmó el envío de la encuesta.');
-      await saveSurveyToFinalDB(caseID);  // Guarda en la base de datos final
-      await handleResetResponses();  // Llamar a handleResetResponses para reiniciar responses en PouchDB
-      console.log('Navegando a ParticipantList después del envío.');
-      onNavigate('ParticipantList');  // Navega a ParticipantList
-    } else {
-      console.log('Usuario canceló el envío de la encuesta.');
-    }
-  };
+// Ejemplo de uso
+getLocation()
+  .then((locationString) => {
+    console.log(locationString); // "{\"coordinates\":[-74.0515934851374,4.667035866476596],\"type\":\"Point\"}"
+  })
+  .catch((error) => {
+    console.error(error);
+  });
+
+
+const saveSurveyToFinalDB = async (caseID) => {
+  try {
+    // Obtener la ubicación actual
+    const location = await getLocation();
+
+    // Obtener todas las respuestas desde la base de datos local
+    const allResponses = await localResponsesDB.find({
+      selector: { CaseID: caseID }
+    });
+
+    console.log('Respuestas obtenidas para guardar:', allResponses.docs);
+
+    // Crear el objeto de datos de la encuesta
+    const surveyData = {
+      _id: uuidv4(), // Generar un nuevo ID único
+      caseID: caseID,
+      formID: filters.formId,
+      timestamp: new Date().toISOString(),
+      location: location, // Agregar la ubicación formateada como GeoJSON
+      responses: allResponses.docs // Incluir las respuestas
+    };
+
+    // Guardar el objeto de encuesta en la base de datos final
+    await finalDB.put(surveyData);
+    console.log('Encuesta guardada en finalDB:', surveyData);
+  } catch (error) {
+    console.error('Error al guardar la encuesta en finalDB:', error);
+  }
+};
+
+const handleSubmit = async () => {
+  // Mostrar mensaje de confirmación
+  const confirmed = window.confirm('¿Deseas enviar la encuesta?');
+  if (confirmed) {
+    console.log('Usuario confirmó el envío de la encuesta.');
+    
+    // Llamar a saveSurveyToFinalDB para guardar la encuesta
+    await saveSurveyToFinalDB(caseID);
+
+    // Llamar a handleResetResponses para reiniciar las respuestas en PouchDB
+    await handleResetResponses();
+    
+    // Navegar a ParticipantList después del envío
+    console.log('Navegando a ParticipantList después del envío.');
+    onNavigate('ParticipantList');
+  } else {
+    console.log('Usuario canceló el envío de la encuesta.');
+  }
+};
+
 
   // Guardar archivo en localResponsesDB y luego transferirlo a finalDB
   const handleFileChange = async (file) => {
