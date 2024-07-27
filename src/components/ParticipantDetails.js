@@ -1,37 +1,36 @@
 /** @jsxImportSource @emotion/react */
 import React, { useState, useEffect, useContext } from 'react';
-import { AppBar, Tabs, Tab, Box, Grid, TextField, Avatar, Button, MenuItem, Typography, IconButton, Divider, FormControl, InputLabel, Select, List, ListItem, ListItemText, ListItemSecondaryAction } from '@mui/material';
+import { AppBar, Tabs, Tab, Box, Grid, TextField, Avatar, Button, MenuItem, Typography, IconButton, Divider, List, ListItem, ListItemText, ListItemSecondaryAction } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import NoteIcon from '@mui/icons-material/Note';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import PersonIcon from '@mui/icons-material/Person';
 import { finalDB, QuestionContext, localSurveyDB } from './QuestionContext';
 import { css } from '@emotion/react';
 import { v4 as uuidv4 } from 'uuid';
-import PDFViewer from './PDFViewer'; // Asegúrate de tener este componente
+import PDFViewer from './PDFViewer';
+import GeoMap from './Controls/GeoMap';
 
 const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
-  console.log('ParticipantDetails onNavigate:', onNavigate); // Verificación
-  console.log('ParticipantDetails onBack:', onBack); // Verificación
-  console.log('ParticipantDetails participantId:', participantId); // Log para depuración
   const [selectedTab, setSelectedTab] = useState(0);
   const [formData, setFormData] = useState({});
   const [extraFields, setExtraFields] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { updateParticipant } = useContext(QuestionContext);
-
   const [caseNotes, setCaseNotes] = useState('');
   const [caseNotesHistory, setCaseNotesHistory] = useState([]);
   const [formIds, setFormIds] = useState([]);
-  const [attachments, setAttachments] = useState([]); // Estado para almacenar los adjuntos
+  const [attachments, setAttachments] = useState([]);
+  const [geometries, setGeometries] = useState([]); // Estado para almacenar las geometrías
 
   useEffect(() => {
     const fetchParticipantData = async () => {
       try {
         setLoading(true);
-        console.log('Iniciando obtención de datos de participante para participantId:', participantId);
-
-        // Consulta para obtener datos generales del participante
         const generalResult = await finalDB.find({
           selector: {
             caseID: participantId,
@@ -39,20 +38,20 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
           }
         });
 
-        console.log('Resultado de búsqueda de datos generales en finalDB:', generalResult.docs);
-
         if (generalResult.docs.length > 0) {
           const participantData = {};
           const caseNotesList = [];
           let photoUrl = '';
+          const geoData = [];
 
           generalResult.docs.forEach(doc => {
-            console.log('Documento del participante encontrado:', doc);
-
             doc.responses.forEach(response => {
               participantData[response.QuestionID] = response.Response;
               if (response.QuestionID === 'Q05' && response.Url) {
-                photoUrl = response.Url; // Obtiene la URL de la foto
+                photoUrl = response.Url;
+              }
+              if (response.Response && response.Response.includes('coordinates')) {
+                geoData.push(JSON.parse(response.Response));
               }
             });
 
@@ -61,11 +60,12 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
             }
           });
 
-          participantData.photo = photoUrl || ''; // Asigna la URL de la foto
-          participantData.caseID = participantId; // Agregar el caseID al formData
+          participantData.photo = photoUrl || '';
+          participantData.caseID = participantId;
           setFormData(participantData);
           setCaseNotesHistory(caseNotesList);
           setExtraFields(generalResult.docs.flatMap(doc => doc.responses.filter(response => response.QuestionID.startsWith('extra'))));
+          setGeometries(geoData); // Asigna las geometrías
         } else {
           throw new Error('No participant data found');
         }
@@ -93,9 +93,7 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
             _attachments: { $exists: true }
           }
         });
-  
-        console.log('Resultado de búsqueda de adjuntos en finalDB:', attachmentsResult.docs);
-  
+
         if (attachmentsResult.docs.length > 0) {
           const attachments = await Promise.all(attachmentsResult.docs.map(async (doc) => {
             const attachmentNames = Object.keys(doc._attachments);
@@ -106,24 +104,19 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
             });
             return Promise.all(attachmentPromises);
           }));
-  
-          // Aplanar la lista de adjuntos
+
           const flatAttachments = attachments.flat();
           setAttachments(flatAttachments);
-          console.log('Adjuntos asignados:', flatAttachments);
-        } else {
-          console.log('No se encontraron adjuntos.');
         }
       } catch (err) {
         setError(`Error fetching attachments: ${err.message}`);
       }
     };
-  
+
     if (participantId) {
       fetchAttachments();
     }
   }, [participantId]);
-  
 
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
@@ -165,16 +158,17 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
   if (error) {
     return <div>{error}</div>;
   }
-  console.log('Datos del participante para mostrar:', formData);
+
   return (
     <Box css={styles.container}>
       <Box css={styles.tabsContainer}>
         <AppBar position="static">
           <Tabs value={selectedTab} onChange={handleTabChange}>
-            <Tab label="Biographic" css={selectedTab === 0 ? styles.selectedTab : styles.tab} />
-            <Tab label="Case Notes" css={selectedTab === 1 ? styles.selectedTab : styles.tab} />
-            <Tab label="Follow-up Forms" css={selectedTab === 2 ? styles.selectedTab : styles.tab} />
-            <Tab label="Attachments" css={selectedTab === 3 ? styles.selectedTab : styles.tab} />
+            <Tab icon={<PersonIcon style={{ color: selectedTab === 0 ? 'grey' : 'white' }} />} />
+            <Tab icon={<NoteIcon style={{ color: selectedTab === 1 ? 'grey' : 'white' }} />} />
+            <Tab icon={<CheckIcon style={{ color: selectedTab === 2 ? 'grey' : 'white' }} />} />
+            <Tab icon={<AttachFileIcon style={{ color: selectedTab === 3 ? 'grey' : 'white' }} />} />
+            <Tab icon={<LocationOnIcon style={{ color: selectedTab === 4 ? 'grey' : 'white' }} />} />
           </Tabs>
         </AppBar>
       </Box>
@@ -191,6 +185,9 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
         <TabPanel value={selectedTab} index={3}>
           <AttachmentsTab attachments={attachments} />
         </TabPanel>
+        <TabPanel value={selectedTab} index={4}>
+          <GeoMap geometries={geometries} onShapeComplete={(shape) => console.log(shape)} />
+        </TabPanel>
       </Box>
       <Box css={styles.footer}>
         <Button variant="contained" color="primary" onClick={handleSave} style={{ marginRight: '8px' }}>
@@ -199,11 +196,8 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
         <Button
           variant="outlined"
           onClick={() => {
-            console.log('Botón Back clickeado'); // Log para depuración
             if (onBack) {
               onBack();
-            } else {
-              console.error('onBack no está definido');
             }
           }}
         >
@@ -358,7 +352,6 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
   const [followUpForms, setFollowUpForms] = useState([]);
   const [formIds, setFormIds] = useState([]);
   const [selectedFormId, setSelectedFormId] = useState('');
-  const [responses, setResponses] = useState([]); 
 
   useEffect(() => {
     const fetchFollowUpForms = async () => {
@@ -391,19 +384,6 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
     fetchFormIds();
   }, []);
 
-  useEffect(() => {
-    const fetchResponses = async () => {
-      try {
-        const allResponses = await localSurveyDB.allDocs({ include_docs: true });
-        setResponses(allResponses.rows.map(row => row.doc));
-      } catch (error) {
-        console.error('Error fetching responses:', error);
-      }
-    };
-
-    fetchResponses();
-  }, []);
-
   const handleAddFollowUpForm = async () => {
     const newForm = {
       _id: uuidv4(),
@@ -424,7 +404,7 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
   const handleNavigateToForm = (formId) => {
     setFilters({ formId: formId, participantId });
     if (typeof onNavigate === 'function') {
-      onNavigate('Formulario', participantId); 
+      onNavigate('Formulario', participantId);
     } else {
       console.error('onNavigate is not a function');
     }
@@ -468,6 +448,7 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
     </Box>
   );
 };
+
 const AttachmentsTab = ({ attachments }) => {
   const [selectedAttachment, setSelectedAttachment] = useState(null);
 
@@ -537,18 +518,11 @@ const styles = {
     background-color: white;
     border-top: 1px solid #e0e0e0;
   `,
-  tab: css`
-    color: white;
-    background-color: #1976d2;
-    &:hover {
-      background-color: #115293;
-    }
-  `,
-  selectedTab: css`
-    color: #1976d2;
-    background-color: white;
-  `,
 };
+
+
+
+
 
 // Exporta ambos componentes individualmente
 export { ParticipantDetails, AttachmentsTab };

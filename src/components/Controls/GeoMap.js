@@ -1,16 +1,16 @@
 /** @jsxImportSource @emotion/react */
 import React, { useState, useRef, useEffect } from 'react';
-import Map, { Marker, GeolocateControl } from 'react-map-gl';
+import Map, { Marker, GeolocateControl, Source, Layer } from 'react-map-gl';
 import { css } from '@emotion/react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import OfflineLayer from './OfflineLayer'; // Importa la capa OfflineLayer
 
-const GeoMap = ({ onShapeComplete }) => {
+const GeoMap = ({ geometries = [], onShapeComplete }) => {
   const [viewport, setViewport] = useState({
-    latitude: 51.505,
-    longitude: -0.09,
+    latitude: -74.05,
+    longitude: 4.66,
     zoom: 13,
     width: '100%',
     height: '400px',
@@ -29,7 +29,7 @@ const GeoMap = ({ onShapeComplete }) => {
         polygon: true,
         trash: true,
       },
-      defaultMode: 'draw_point', // Predeterminado a Geopoint
+      defaultMode: 'draw_point',
     })
   );
 
@@ -58,7 +58,7 @@ const GeoMap = ({ onShapeComplete }) => {
         ...prev,
         latitude,
         longitude,
-        zoom: 13, // Asegurarse de que el zoom se aplica correctamente
+        zoom: 13,
       }));
     });
   }, []);
@@ -67,9 +67,9 @@ const GeoMap = ({ onShapeComplete }) => {
     const data = draw.current.getAll();
     if (data.features.length > 0) {
       const shape = data.features[0].geometry;
-      onShapeComplete(shape);
+      onShapeComplete && onShapeComplete(shape);
     } else {
-      onShapeComplete(null);
+      onShapeComplete && onShapeComplete(null);
     }
   };
 
@@ -166,7 +166,15 @@ const GeoMap = ({ onShapeComplete }) => {
             />
           </Marker>
         )}
-        {/* Integración de la capa offline personalizada */}
+        {geometries.map((geometry, index) => (
+          <Source key={index} type="geojson" data={geometry}>
+            <Layer
+              id={`layer-${index}`}
+              type={geometry.type === 'Point' ? 'circle' : 'fill'}
+              paint={geometry.type === 'Point' ? { 'circle-radius': 5, 'circle-color': 'red' } : { 'fill-color': '#007bff', 'fill-opacity': 0.1 }}
+            />
+          </Source>
+        ))}
         <OfflineLayer />
       </Map>
     </div>
