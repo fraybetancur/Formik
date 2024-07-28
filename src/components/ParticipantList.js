@@ -12,6 +12,7 @@ const ParticipantList = ({ onNavigate }) => {
   const [loading, setLoading] = useState(true);
   const [selectedParticipantId, setSelectedParticipantId] = useState(null);
   const { setFilters, shouldReloadParticipants, questions } = useContext(QuestionContext);
+  const { filters } = useContext(QuestionContext);
 
   useEffect(() => {
     setFilters({ formId: '', participantId: '' });
@@ -48,7 +49,7 @@ const ParticipantList = ({ onNavigate }) => {
 
   useEffect(() => {
     fetchParticipants();
-  }, [shouldReloadParticipants]);
+  }, [shouldReloadParticipants, filters]);
 
   const filteredParticipants = participants.filter(participant =>
     participant.fields.some(field =>
@@ -65,10 +66,10 @@ const ParticipantList = ({ onNavigate }) => {
     setSelectedParticipantId(null);
   };
 
-  const { filters } = useContext(QuestionContext);
+  
 
   const handleAddParticipant = () => {
-    setFilters({ ...filters, formId: 'Registro' });
+    setFilters(prevFilters => ({ ...prevFilters, formId: 'Registro' }));
     onNavigate('Formulario');
   };
 

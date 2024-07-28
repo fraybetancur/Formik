@@ -44,6 +44,9 @@ const SurveyForm = ({ onNavigate, participantId }) => {
       if (filters.program && q.Program !== filters.program) {
         return false;
       }
+      if (filters.formId && q.FormID !== filters.formId) {
+        return false;
+      }
       return true;
     });
 
@@ -121,8 +124,7 @@ const SurveyForm = ({ onNavigate, participantId }) => {
       FormID: filters.formId,
       Organization: currentQuestion.Organization,
       Program: currentQuestion.Program,
-ParticipantList: currentQuestion.ParticipantList,
-ParticipantList: currentQuestion.ParticipantList,
+      ParticipantList: currentQuestion.ParticipantList,
       Index: currentQuestionIndex,
       ResponseID: uuidv4(),
       Response: JSON.stringify(shape),
