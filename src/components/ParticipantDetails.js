@@ -25,39 +25,53 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
   const [caseNotesHistory, setCaseNotesHistory] = useState([]);
   const [formIds, setFormIds] = useState([]);
   const [attachments, setAttachments] = useState([]);
-  const [geometries, setGeometries] = useState([]); // Estado para almacenar las geometrías
+  const [geometries, setGeometries] = useState([]);
+  const [selectedFormId, setSelectedFormId] = useState(''); // Estado para manejar el formulario seleccionado
+  const [formQuestions, setFormQuestions] = useState([]);
+
+  useEffect(() => {
+    const fetchFormIds = async () => {
+      try {
+        const allForms = await localSurveyDB.allDocs({ include_docs: true });
+        console.log('All forms:', allForms.rows);
+        const uniqueFormIds = [...new Set(allForms.rows.map(row => row.doc.FormID).filter(formId => formId && formId !== 'Registro'))];
+        console.log('Unique Form IDs:', uniqueFormIds);
+        setFormIds(uniqueFormIds);
+      } catch (error) {
+        console.error('Error fetching form IDs:', error);
+      }
+    };
+
+    fetchFormIds();
+  }, []);
 
   useEffect(() => {
     const fetchParticipantData = async () => {
       try {
         setLoading(true);
+        console.log('Fetching participant data for FormID:', selectedFormId || 'Registro');
         const generalResult = await finalDB.find({
           selector: {
             caseID: participantId,
-            formID: 'Registro'
+            formID: selectedFormId || 'Registro'
           }
         });
-  
+
+        console.log('General Result:', generalResult);
+
         if (generalResult.docs.length > 0) {
           const participantData = {};
           const caseNotesList = [];
           let photoUrl = '';
           const geoData = [];
-  
+
           generalResult.docs.forEach(doc => {
-            // Depuración: Verifica el contenido de cada doc
             console.log('Document:', doc);
-  
-            // Extraer coordenadas del campo 'responses'
             doc.responses.forEach(response => {
               participantData[response.QuestionID] = response.Response;
-  
-              // Verifica si el campo Url está presente para imágenes
               if (response.QuestionID === 'Q05' && response.Url) {
                 photoUrl = response.Url;
               }
-  
-              // Verifica si la respuesta contiene coordenadas
               if (response.Response && response.Response.includes('coordinates')) {
                 try {
                   const parsedResponse = JSON.parse(response.Response);
@@ -68,8 +82,7 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
                 }
               }
             });
-  
-            // Extraer coordenadas del campo 'location'
+
             if (doc.location) {
               try {
                 const parsedLocation = JSON.parse(doc.location);
@@ -79,37 +92,35 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
                 console.error('Error parsing location:', error);
               }
             }
-  
+
             if (doc.caseNotes) {
               caseNotesList.push(...doc.caseNotes.reverse());
             }
           });
-  
+
           participantData.photo = photoUrl || '';
           participantData.caseID = participantId;
           setFormData(participantData);
           setCaseNotesHistory(caseNotesList);
           setExtraFields(generalResult.docs.flatMap(doc => doc.responses.filter(response => response.QuestionID.startsWith('extra'))));
-          setGeometries(geoData); // Asigna las geometrías
+          setGeometries(geoData);
         } else {
           throw new Error('No participant data found');
         }
-  
+
         setLoading(false);
       } catch (err) {
         setError(`Error fetching participant data from finalDB: ${err.message}`);
         setLoading(false);
       }
     };
-  
+
     if (participantId) {
       fetchParticipantData();
     } else {
       setLoading(false);
     }
-  }, [participantId]);
-  
-  
+  }, [participantId, selectedFormId]);
 
   useEffect(() => {
     const fetchAttachments = async () => {
@@ -169,13 +180,36 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
     };
     updateParticipant(participantId, updatedData);
     setCaseNotes('');
-    setCaseNotesHistory([newCaseNote, ...caseNotesHistory]); // Actualizar el historial inmediatamente
+    setCaseNotesHistory([newCaseNote, ...caseNotesHistory]);
   };
 
   const handleDelete = (id) => {
     const updatedNotes = caseNotesHistory.filter(note => note.id !== id);
     setCaseNotesHistory(updatedNotes);
     updateParticipant(participantId, { ...formData, caseNotes: updatedNotes });
+  };
+
+  const handleFormSelect = async (event) => {
+    const selectedFormId = event.target.value;
+    setSelectedFormId(selectedFormId);
+    console.log('Selected FormID:', selectedFormId);
+
+    try {
+      const formResult = await localSurveyDB.find({
+        selector: {
+          FormID: selectedFormId
+        }
+      });
+      console.log('Form Result:', formResult.docs);
+      if (formResult.docs.length > 0) {
+        setFormQuestions(formResult.docs);
+      } else {
+        setFormQuestions([]);
+      }
+    } catch (err) {
+      console.error('Error fetching form questions:', err);
+      setFormQuestions([]);
+    }
   };
 
   if (loading) {
@@ -194,50 +228,50 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
             <Tooltip title="Biographic Data">
               <Tab
                 icon={<PersonIcon />}
-                sx={{ 
-                  minWidth: '0px', 
+                sx={{
+                  minWidth: '0px',
                   color: selectedTab === 0 ? 'grey' : 'white',
-                  '&.Mui-selected': { color: 'grey' }, // Asegúrate de aplicar el color gris cuando está seleccionado
+                  '&.Mui-selected': { color: 'grey' },
                 }}
               />
             </Tooltip>
             <Tooltip title="Case Notes">
               <Tab
                 icon={<NoteIcon />}
-                sx={{ 
-                  minWidth: '0px', 
+                sx={{
+                  minWidth: '0px',
                   color: selectedTab === 1 ? 'grey' : 'white',
-                  '&.Mui-selected': { color: 'grey' }, // Asegúrate de aplicar el color gris cuando está seleccionado
+                  '&.Mui-selected': { color: 'grey' },
                 }}
               />
             </Tooltip>
             <Tooltip title="Checklist">
               <Tab
                 icon={<CheckIcon />}
-                sx={{ 
-                  minWidth: '0px', 
+                sx={{
+                  minWidth: '0px',
                   color: selectedTab === 2 ? 'grey' : 'white',
-                  '&.Mui-selected': { color: 'grey' }, // Asegúrate de aplicar el color gris cuando está seleccionado
+                  '&.Mui-selected': { color: 'grey' },
                 }}
               />
             </Tooltip>
             <Tooltip title="Attachments">
               <Tab
                 icon={<AttachFileIcon />}
-                sx={{ 
-                  minWidth: '0px', 
+                sx={{
+                  minWidth: '0px',
                   color: selectedTab === 3 ? 'grey' : 'white',
-                  '&.Mui-selected': { color: 'grey' }, // Asegúrate de aplicar el color gris cuando está seleccionado
+                  '&.Mui-selected': { color: 'grey' },
                 }}
               />
             </Tooltip>
             <Tooltip title="Location Data">
               <Tab
                 icon={<LocationOnIcon />}
-                sx={{ 
-                  minWidth: '0px', 
+                sx={{
+                  minWidth: '0px',
                   color: selectedTab === 4 ? 'grey' : 'white',
-                  '&.Mui-selected': { color: 'grey' }, // Asegúrate de aplicar el color gris cuando está seleccionado
+                  '&.Mui-selected': { color: 'grey' },
                 }}
               />
             </Tooltip>
@@ -246,7 +280,25 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
       </Box>
       <Box css={styles.content}>
         <TabPanel value={selectedTab} index={0}>
-          <BiographicTab formData={formData} handleChange={handleChange} extraFields={extraFields} />
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <TextField
+                select
+                label="Seleccionar Formulario"
+                value={selectedFormId}
+                onChange={handleFormSelect}
+                fullWidth
+                margin="normal"
+              >
+                {formIds.map(formId => (
+                  <MenuItem key={formId} value={formId}>
+                    {formId}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+          </Grid>
+          <BiographicTab formData={formData} handleChange={handleChange} extraFields={extraFields} formQuestions={formQuestions} />
         </TabPanel>
         <TabPanel value={selectedTab} index={1}>
           <CaseNotesTab caseNotes={caseNotes} setCaseNotes={setCaseNotes} caseNotesHistory={caseNotesHistory} handleSave={handleSave} handleDelete={handleDelete} />
@@ -303,7 +355,7 @@ const TabPanel = (props) => {
   );
 };
 
-const BiographicTab = ({ formData, handleChange, extraFields }) => (
+const BiographicTab = ({ formData, handleChange, extraFields, formQuestions }) => (
   <Box>
     <Grid container spacing={2}>
       <Grid item xs={12} sm={4}>
@@ -322,49 +374,19 @@ const BiographicTab = ({ formData, handleChange, extraFields }) => (
               value={formData.caseID || ''}
               fullWidth
               margin="normal"
-              disabled // Este campo no es editable
+              disabled
             />
           </Grid>
-          {[
-            { id: 'Q06', label: 'Apellidos' },
-            { id: 'Q07', label: 'Nombres' },
-            { id: 'Q08', label: 'Fecha Nacimiento' },
-            { id: 'Q09', label: 'Sexo' },
-            { id: 'Q10', label: 'Género' },
-            { id: 'Q11', label: 'Nacionalidad' },
-            { id: 'Q12', label: 'Estado Civil' },
-            { id: 'Q14', label: 'Tipo Documento' },
-            { id: 'Q15', label: 'Número de Documento' },
-            { id: 'Q23', label: 'Departamento de residencia' },
-            { id: 'Q24', label: 'Municipio de residencia' },
-          ].map(({ id, label, type, options }) => (
-            <Grid item xs={12} sm={6} md={4} key={id}>
-              {type === 'select' ? (
-                <TextField
-                  select
-                  label={label}
-                  name={id}
-                  value={formData[id] || ''}
-                  onChange={handleChange}
-                  fullWidth
-                  margin="normal"
-                >
-                  {options.map(option => (
-                    <MenuItem key={option} value={option}>
-                      {option}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              ) : (
-                <TextField
-                  label={label}
-                  name={id}
-                  value={formData[id] || ''}
-                  onChange={handleChange}
-                  fullWidth
-                  margin="normal"
-                />
-              )}
+          {formQuestions.map(({ QuestionID, QuestionText }) => (
+            <Grid item xs={12} sm={6} md={4} key={QuestionID}>
+              <TextField
+                label={QuestionText}
+                name={QuestionID}
+                value={formData[QuestionID] || ''}
+                onChange={handleChange}
+                fullWidth
+                margin="normal"
+              />
             </Grid>
           ))}
           {extraFields.map(({ QuestionID, QuestionText }) => (
@@ -573,7 +595,6 @@ const styles = {
     width: 100%;
     overflow: hidden;
   `,
-  
   tabsContainer: css`
     position: fixed;
     z-index: 1000;
@@ -598,9 +619,4 @@ const styles = {
   `,
 };
 
-
-
-
-
-// Exporta ambos componentes individualmente
 export { ParticipantDetails, AttachmentsTab };

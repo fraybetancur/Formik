@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import PouchDB from 'pouchdb-browser';
 import PouchDBFind from 'pouchdb-find';
 import { toast } from 'react-toastify';
@@ -56,27 +56,28 @@ export const QuestionProvider = ({ children }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [error, setError] = useState(null);
-  
-  // Nuevos estados para los parámetros de filtrado
-  const [organization, setOrganization] = useState('');
-  const [program, setProgram] = useState('');
-  const [formId, setFormId] = useState('');
-  const [location, setLocation] = useState('');
-  const [interviewer, setInterviewer] = useState('');
+  const [organizationId, setOrganizationId] = useState(null); // Estado para la organización
+  const [programId, setProgramId] = useState(null); // Estado para el programa
+
+  const [shouldReloadParticipants, setShouldReloadParticipants] = useState(false);
 
   // Definir el estado y la función setFilters
   const [filters, setFilters] = useState({
-    organization: '',
-    program: '',
     formId: '',
-    location: '',
-    interviewer: '',
+    organization: '',
+    program: ''
   });
+  
+
+  // Asegurarse de que login se llama correctamente desde el formulario de login
+  
 
   const loadQuestions = useCallback(async () => {
     try {
+      console.log('Cargando preguntas...');
       setIsLoading(true);
       const surveyResult = await localSurveyDB.allDocs({ include_docs: true });
+      console.log('Preguntas cargadas:', surveyResult);
       setQuestions(surveyResult.rows.map(row => row.doc));
       const choicesResult = await localChoicesDB.allDocs({ include_docs: true });
       setChoices(choicesResult.rows.map(row => row.doc));
@@ -85,6 +86,7 @@ export const QuestionProvider = ({ children }) => {
       setIsLoading(false);
     } catch (err) {
       setError(err.message);
+      console.error('Error cargando preguntas:', err);
       setIsLoading(false);
     }
   }, []);
@@ -102,9 +104,6 @@ export const QuestionProvider = ({ children }) => {
       }
     }
   };
-
-  const [shouldReloadParticipants, setShouldReloadParticipants] = useState(false);
-
 
   const syncData = async () => {
     try {
@@ -130,9 +129,9 @@ export const QuestionProvider = ({ children }) => {
 
   const handleBackupSync = async () => {
     try {
-      console.log("Iniciando sincronización...");
+      console.log("Iniciando sincronización con backup...");
       setIsSyncing(true);
-      await syncWithRetry(localResponsesDB, remoteBackupDB);
+      await syncWithRetry(finalDB, remoteResponsesDB);
       await loadQuestions();
       toast.success('Datos sincronizados con el backup exitosamente');
     } catch (err) {
@@ -148,6 +147,7 @@ export const QuestionProvider = ({ children }) => {
     setIsUploading(true);
     try {
       const allDocs = await finalDB.allDocs({ include_docs: true, attachments: true });
+      console.log('Documentos para subir:', allDocs);
       const batch = allDocs.rows.map(doc => {
         const { _id, _rev, ...docWithoutIdRev } = doc.doc;
         return {
@@ -176,6 +176,7 @@ export const QuestionProvider = ({ children }) => {
     setIsResetting(true);
     try {
       const allDocs = await finalDB.allDocs();
+      console.log('Documentos para restablecer:', allDocs);
       const deleteDocs = allDocs.rows.map(row => ({
         _id: row.id,
         _rev: row.value.rev,
@@ -210,7 +211,6 @@ export const QuestionProvider = ({ children }) => {
       console.error('Error restableciendo las respuestas:', error);
     }
   };
-  
 
   useEffect(() => {
     loadQuestions();
@@ -239,7 +239,8 @@ export const QuestionProvider = ({ children }) => {
     <QuestionContext.Provider value={{ 
       questions,
       setQuestions,
-      choices, 
+      choices,
+      setChoices,
       responses, 
       setResponses, 
       currentQuestionIndex, 
@@ -258,17 +259,19 @@ export const QuestionProvider = ({ children }) => {
       currentComponent, 
       setCurrentComponent,
       shouldReloadParticipants,
-      organization, setOrganization,
-      program, setProgram,
-      formId, setFormId,
-      location, setLocation,
-      interviewer, setInterviewer,
-      filters, // Incluye esto
-      setFilters, // Incluye esto
+      filters, // Incluye el estado 'filters'
+      setFilters, // Incluye la función 'setFilters'
+      organizationId, // Incluye el estado organizationId
+      setOrganizationId, // Incluye la función setOrganizationId
+      programId, // Incluye el estado programId
+      setProgramId, // Incluye la función setProgramId
     }}>
       {children}
     </QuestionContext.Provider>
   );
 };
 
-export {localSurveyDB, localResponsesDB, finalDB };
+// Definir y exportar el hook useQuestionContext
+export const useQuestionContext = () => useContext(QuestionContext);
+
+export { localSurveyDB, localResponsesDB, finalDB };

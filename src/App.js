@@ -11,8 +11,10 @@ import Formulario from './components/Formulario';
 import ParticipantList from './components/ParticipantList';
 import { ParticipantDetails } from './components/ParticipantDetails';
 import PDFUploader from './components/PDFUploader';
-import FilterForm from './components/FilterForm';
+import LoginForm from './components/LoginForm';
 import CacheDownloader from './components/CacheDownloader';
+import ConditionManager from './components/ConditionManager';
+import ConditionEditor from './components/ConditionEditor';
 
 const MyEnhancedForm = lazy(() => import('./components/formik-demo'));
 const ExcelUploader = lazy(() => import('./components/ExcelUploader'));
@@ -57,7 +59,7 @@ const mainContentStyles = css`
   }
 `;
 
-const AppContent = () => {
+const AppContent = ({ isLoggedIn, onLogin }) => { // * Recibir isLoggedIn y onLogin como props.
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSubHeaderVisible, setIsSubHeaderVisible] = useState(false);
   const { currentComponent, setCurrentComponent, setCurrentQuestionIndex, setFilters } = useContext(QuestionContext);
@@ -96,6 +98,9 @@ const AppContent = () => {
   };
 
   const renderComponent = () => {
+    if (!isLoggedIn) { // * Mostrar LoginForm si el usuario no está autenticado.
+      return <LoginForm onLogin={onLogin} />;
+    }
     switch (currentComponent.component) {
       case 'MyEnhancedForm':
         return <MyEnhancedForm />;
@@ -107,6 +112,10 @@ const AppContent = () => {
         return <DataSync />;
       case 'ResponsesList':
         return <ResponsesList />;
+      case 'ConditionManager':
+        return <ConditionManager />;
+      case 'ConditionEditor':
+        return <ConditionEditor />;
       case 'SurveyForm':
         return <SurveyForm onNavigate={handleNavigate} participantId={currentComponent.participantId} />;
       case 'Formulario':
@@ -118,8 +127,6 @@ const AppContent = () => {
         return <ParticipantDetails participantId={currentComponent.participantId} onBack={handleBack} onNavigate={handleNavigate} />;
       case 'PDFUploader':
         return <PDFUploader onNavigate={handleNavigate} />;
-      case 'FilterForm':
-        return <FilterForm onNavigate={handleNavigate} />;
       default:
         return <ParticipantList onNavigate={handleNavigate} />;
     }
@@ -147,11 +154,19 @@ const AppContent = () => {
   );
 };
 
-const App = () => (
-  <QuestionProvider>
-    <AppContent />
-  </QuestionProvider>
-);
+const App = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // * Definir el estado de autenticación en el nivel superior.
+
+  const handleLogin = (organizationId, programId, userType) => { // * Definir la función handleLogin para manejar la autenticación.
+    setIsLoggedIn(true);
+    console.log(`Logged in with Organization: ${organizationId}, Program: ${programId}, User Type: ${userType}`);
+  };
+
+  return (
+    <QuestionProvider>
+      <AppContent isLoggedIn={isLoggedIn} onLogin={handleLogin} /> {/* * Pasar isLoggedIn y handleLogin como props a AppContent */}
+    </QuestionProvider>
+  );
+};
 
 export default App;
-  

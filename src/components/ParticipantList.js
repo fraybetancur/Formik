@@ -1,42 +1,39 @@
 /** @jsxImportSource @emotion/react */
 import React, { useState, useEffect, useContext } from 'react';
 import { css } from '@emotion/react';
-import { Box } from '@mui/material';
-import { finalDB, QuestionContext } from './QuestionContext';
-import { TextField, List, ListItem, Avatar, CircularProgress, Card, CardContent, Fab, Grid, Typography, Divider, Button } from '@mui/material';
+import { Box, TextField, List, ListItem, Avatar, CircularProgress, Card, CardContent, Fab, Grid, Typography, Divider, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import { finalDB, QuestionContext } from './QuestionContext';
 import { ParticipantDetails } from './ParticipantDetails';
-
 
 const ParticipantList = ({ onNavigate }) => {
   const [participants, setParticipants] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [selectedParticipantId, setSelectedParticipantId] = useState(null);
-  const { setFilters, shouldReloadParticipants } = useContext(QuestionContext); // Usar shouldReloadParticipants del contexto
+  const { setFilters, shouldReloadParticipants, questions } = useContext(QuestionContext);
 
-  // Limpiar filtros al inicio
   useEffect(() => {
     setFilters({ formId: '', participantId: '' });
   }, [setFilters]);
 
   const fetchParticipants = async () => {
     try {
-      setLoading(true); // Añadido para mostrar el indicador de carga correctamente
+      setLoading(true);
       const allDocs = await finalDB.allDocs({ include_docs: true });
       const fetchedParticipants = allDocs.rows.reduce((acc, row) => {
         if (row.doc.responses) {
           row.doc.responses.forEach(response => {
-            const { CaseID, QuestionID, Response, Url } = response;
-            if (!acc[CaseID]) acc[CaseID] = { CaseID };
-            if (QuestionID === 'Q07') acc[CaseID].name = Response;
-            if (QuestionID === 'Q08') acc[CaseID].birthdate = Response;
-            if (QuestionID === 'Q09') acc[CaseID].sex = Response;
-            if (QuestionID === 'Q11') acc[CaseID].nationality = Response;
-            if (QuestionID === 'Q14') acc[CaseID].documentType = Response;
-            if (QuestionID === 'Q15') acc[CaseID].documentNumber = Response;
-            if (QuestionID === 'Q23') acc[CaseID].residence = Response;
-            if (QuestionID === 'Q05') acc[CaseID].photo = Url;
+            const { CaseID, QuestionID, Response, Url, ParticipantList } = response;
+            if (!acc[CaseID]) acc[CaseID] = { CaseID, fields: [], photo: null };
+
+            if (ParticipantList) {
+              if (ParticipantList === 1) {
+                acc[CaseID].photo = Url;
+              } else {
+                acc[CaseID].fields.push({ QuestionID, Response, ParticipantList });
+              }
+            }
           });
         }
         return acc;
@@ -51,29 +48,58 @@ const ParticipantList = ({ onNavigate }) => {
 
   useEffect(() => {
     fetchParticipants();
-  }, [shouldReloadParticipants]); // Dependencia en shouldReloadParticipants para forzar la recarga
+  }, [shouldReloadParticipants]);
 
   const filteredParticipants = participants.filter(participant =>
-    (participant.name && participant.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (participant.documentNumber && participant.documentNumber.toLowerCase().includes(searchTerm.toLowerCase()))
+    participant.fields.some(field =>
+      field.Response && field.Response.toLowerCase().includes(searchTerm.toLowerCase())
+    )
   );
 
   const handleSelectParticipant = (participant) => {
     setSelectedParticipantId(participant.CaseID);
-    onNavigate('ParticipantDetails', participant.CaseID); // Pasar participantId al navegar
+    onNavigate('ParticipantDetails', participant.CaseID);
   };
-  
-  
+
   const handleBack = () => {
     setSelectedParticipantId(null);
   };
-  
-  const { filters } = useContext(QuestionContext);
 
+  const { filters } = useContext(QuestionContext);
 
   const handleAddParticipant = () => {
     setFilters({ ...filters, formId: 'Registro' });
     onNavigate('Formulario');
+  };
+
+  const getFieldName = (questionID) => {
+    const question = questions.find(q => q.QuestionID === questionID);
+    return question ? question.QuestionText : '';
+  };
+
+  const renderParticipantFields = (participant) => {
+    if (participant.fields && participant.fields.length > 0) {
+      return participant.fields
+        .sort((a, b) => a.ParticipantList - b.ParticipantList)
+        .map((item, index) => (
+          <React.Fragment key={index}>
+            {index === 0 ? (
+              <Typography variant="h6" css={participantListStyles.firstFieldText}>
+                {item.Response}
+              </Typography>
+            ) : (
+              <Typography variant="body2" css={participantListStyles.fieldText}>
+                {getFieldName(item.QuestionID)}: {item.Response}
+              </Typography>
+            )}
+            {index < participant.fields.length - 1 && (
+              <Divider css={participantListStyles.dividerStyle} />
+            )}
+          </React.Fragment>
+        ));
+        
+    }
+    return null;
   };
 
   return (
@@ -114,13 +140,7 @@ const ParticipantList = ({ onNavigate }) => {
                           <Avatar src={participant.photo} css={participantListStyles.avatarStyle} />
                         </div>
                         <div css={participantListStyles.infoStyle}>
-                          <Typography variant="h6">{participant.name}</Typography>
-                          <Divider css={participantListStyles.dividerStyle} />
-                          <Typography variant="body2">Documento: {participant.documentNumber}</Typography>
-                          <Divider css={participantListStyles.dividerStyle} />
-                          <Typography variant="body2">Fecha Nacimiento: {participant.birthdate}</Typography>
-                          <Divider css={participantListStyles.dividerStyle} />
-                          <Typography variant="body2">Sexo: {participant.sex}</Typography>
+                          {renderParticipantFields(participant)}
                         </div>
                       </ListItem>
                     </CardContent>
@@ -145,7 +165,7 @@ const participantListStyles = {
     flex-direction: column;
     height: 100vh;
     width: 100%;
-    overflow: hidden; /* Evita que todo el contenedor haga scroll */
+    overflow: hidden;
     position: fixed;
   `,
   fixedTop: css`
@@ -155,12 +175,12 @@ const participantListStyles = {
     background-color: white;
     padding: 1rem;
     box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
-    overflow: hidden; 
+    overflow: hidden;
   `,
   content: css`
     flex: 1;
     overflow-y: auto;
-    padding-bottom: 160px; /* Ajusta para el espacio de los botones fijos */
+    padding-bottom: 160px;
     padding-left: 2rem;
     padding-right: 2rem;
   `,
@@ -206,15 +226,33 @@ const participantListStyles = {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   `,
   cardContentStyle: css`
-    padding: 0px !important;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    padding: 0px;
+    &:last-child {
+      padding-bottom: 0px;
+    }
   `,
   infoStyle: css`
-    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   `,
   dividerStyle: css`
     margin: 4px 0;
     border-color: rgb(59 59 59);
   `,
+  fieldText: css`
+    margin-bottom: 5px;
+  `,
+  firstFieldText: css`
+  font-weight: bold;
+  font-size: 1.2em;
+  color: #333;
+  margin-bottom: 5px;
+`,
+
 };
 
 export default ParticipantList;

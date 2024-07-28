@@ -128,6 +128,18 @@ const SideMenu = ({ isOpen, onClose, onNavigate }) => {
             </svg>
             SurveyForm
           </NavButton>
+          <NavButton onClick={() => onNavigate('ConditionEditor')}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
+              <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z" />
+            </svg>
+            ConditionEditor
+          </NavButton>
+          <NavButton onClick={() => onNavigate('ConditionManager')}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
+              <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z" />
+            </svg>
+            ConditionManager
+          </NavButton>
           <NavButton onClick={() => onNavigate('DataSync')}>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
               <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z" />
@@ -158,10 +170,10 @@ const SideMenu = ({ isOpen, onClose, onNavigate }) => {
             </svg>
             PDFUploader
           </NavButton>
-          <NavButton onClick={() => onNavigate('FilterForm')}>
+          <NavButton onClick={() => onNavigate('LoginForm')}>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
               <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z" />
-            </svg>Filter
+            </svg>LoginForm
           </NavButton>
           <NavButton onClick={() => onNavigate('CacheDownloader')}>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="20" height="20">

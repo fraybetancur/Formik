@@ -34,142 +34,16 @@ const SurveyForm = ({ onNavigate, participantId }) => {
     finalDB.createIndex({ index: { fields: ['CaseID', 'QuestionID'] } });
   }, []);
 
-  const parseDependencies = (dependencies) => {
-    return dependencies.split('AND').map(dep => {
-      let operator;
-      let value;
-      let fact;
-
-      dep = dep.trim();
-      if (dep.includes(' OR ')) {
-        const conditions = dep.split(' OR ').map(cond => parseDependencies(cond.trim())[0]);
-        return { conditions, operator: 'OR' };
-      } else if (dep.includes('=')) {
-        [fact, value] = dep.split('=').map(s => s.trim().replace(/"/g, ''));
-        operator = '==';
-      } else if (dep.includes('<>')) {
-        [fact, value] = dep.split('<>').map(s => s.trim().replace(/"/g, ''));
-        operator = '!=';
-      } else if (dep.includes('>=')) {
-        [fact, value] = dep.split('>=').map(s => s.trim());
-        operator = '>=';
-      } else if (dep.includes('<=')) {
-        [fact, value] = dep.split('<=').map(s => s.trim());
-        operator = '<=';
-      } else if (dep.includes('>')) {
-        [fact, value] = dep.split('>').map(s => s.trim());
-        operator = '>';
-      } else if (dep.includes('<')) {
-        [fact, value] = dep.split('<').map(s => s.trim());
-        operator = '<';
-      } else if (dep.includes('STARTS WITH')) {
-        [fact, value] = dep.split('STARTS WITH').map(s => s.trim());
-        operator = 'STARTS WITH';
-      } else if (dep.includes('ENDS WITH')) {
-        [fact, value] = dep.split('ENDS WITH').map(s => s.trim());
-        operator = 'ENDS WITH';
-      } else if (dep.includes('CONTAINS')) {
-        [fact, value] = dep.split('CONTAINS').map(s => s.trim());
-        operator = 'CONTAINS';
-      } else if (dep.includes('BETWEEN')) {
-        [fact, value] = dep.split('BETWEEN').map(s => s.trim());
-        operator = 'BETWEEN';
-      } else if (dep.includes('NOT BETWEEN')) {
-        [fact, value] = dep.split('NOT BETWEEN').map(s => s.trim());
-        operator = 'NOT BETWEEN';
-      } else if (dep.includes('IN')) {
-        [fact, value] = dep.split('IN').map(s => s.trim().replace(/[\[\]]/g, '').split(',').map(v => v.trim()));
-        operator = 'IN';
-      } else if (dep.includes('NOT IN')) {
-        [fact, value] = dep.split('NOT IN').map(s => s.trim().replace(/[\[\]]/g, '').split(',').map(v => v.trim()));
-        operator = 'NOT IN';
-      }
-
-      return { fact, operator, value };
-    });
-  };
-
-  const evaluateDependency = (factValue, operator, value) => {
-    console.log(`Evaluando dependencia: { factValue: ${factValue}, operator: ${operator}, value: ${value} }`);
-    switch (operator) {
-      case '==':
-        return factValue == value; // Cambiado a ==
-      case '!=':
-        return factValue != value; // Cambiado a !=
-      case '>':
-        return Number(factValue) > Number(value);
-      case '>=':
-        return Number(factValue) >= Number(value);
-      case '<':
-        return Number(factValue) < Number(value);
-      case '<=':
-        return Number(factValue) <= Number(value);
-      case 'STARTS WITH':
-        return factValue.startsWith(value);
-      case 'ENDS WITH':
-        return factValue.endsWith(value);
-      case 'CONTAINS':
-        return factValue.includes(value);
-      case 'BETWEEN':
-        const [min, max] = value.split('AND').map(v => v.trim());
-        return Number(factValue) >= Number(min) && Number(factValue) <= Number(max);
-      case 'NOT BETWEEN':
-        const [minNB, maxNB] = value.split('AND').map(v => v.trim());
-        return Number(factValue) < Number(minNB) || Number(factValue) > Number(maxNB);
-      case 'IN':
-        return value.includes(factValue);
-      case 'NOT IN':
-        return !value.includes(factValue);
-      default:
-        return false;
-    }
-  };
-
-  const evaluateConditions = (conditions, responseDict) => {
-    return conditions.every(cond => {
-      if (cond.operator === 'OR') {
-        return cond.conditions.some(subCond => evaluateConditions([subCond], responseDict));
-      }
-      const response = responseDict[cond.fact];
-      return response && evaluateDependency(response.Response, cond.operator, cond.value);
-    });
-  };
-
   const fetchFilteredQuestions = async (questions, filters, responses, caseID) => {
     console.log('Iniciando filtrado de preguntas...');
 
-    // Pre-cargar todas las respuestas relevantes en un diccionario
-    const responseDict = {};
-    const allResponses = await localResponsesDB.find({ selector: { CaseID: caseID } });
-    allResponses.docs.forEach(response => {
-      responseDict[response.QuestionID] = response;
-    });
-
-    const newFilteredQuestions = questions.filter((q, index) => {
-      console.log(`Evaluando pregunta: ${q.QuestionID} - ${q.QuestionText}`);
-
-      // Filtrado basado en filtros de organización, programa, etc.
-      if (
-        (filters.organization && q.Organization !== filters.organization) ||
-        (filters.program && q.Program !== filters.program) ||
-        (filters.formId && q.FormID !== filters.formId) ||
-        (filters.location && q.Location !== filters.location) ||
-        (filters.interviewer && q.Interviewer !== filters.interviewer)
-      ) {
-        console.log(`Pregunta ${q.QuestionID} excluida por filtros de metadatos.`);
+    const newFilteredQuestions = questions.filter((q) => {
+      if (filters.Organization && q.Organization !== filters.Organization) {
         return false;
       }
-
-      // Filtrado basado en dependencias de respuestas
-      if (q.ResponseDependencies) {
-        const dependencies = parseDependencies(q.ResponseDependencies);
-        if (!evaluateConditions(dependencies, responseDict)) {
-          console.log(`Pregunta ${q.QuestionID} excluida por no cumplir las dependencias.`);
-          return false;
-        }
+      if (filters.program && q.Program !== filters.program) {
+        return false;
       }
-
-      console.log(`Pregunta ${q.QuestionID} incluida.`);
       return true;
     });
 
@@ -208,11 +82,8 @@ const SurveyForm = ({ onNavigate, participantId }) => {
           }
         });
         console.log('Respuesta guardada:', response);
-
-        // Añadir log para verificar el estado actual de responses
-        const updatedResponses = await localResponsesDB.find({ selector: { CaseID: response.CaseID } });
-        console.log('Estado actual de responses después de guardar:', updatedResponses.docs);
-
+        console.log('Organization:', filters.organization);
+        console.log('Program:', filters.program);
         return;
       } catch (error) {
         if (error.status === 409) {
@@ -248,6 +119,10 @@ const SurveyForm = ({ onNavigate, participantId }) => {
       CaseDetails: '',
       QuestionID: filteredQuestions[currentQuestionIndex].QuestionID,
       FormID: filters.formId,
+      Organization: currentQuestion.Organization,
+      Program: currentQuestion.Program,
+ParticipantList: currentQuestion.ParticipantList,
+ParticipantList: currentQuestion.ParticipantList,
       Index: currentQuestionIndex,
       ResponseID: uuidv4(),
       Response: JSON.stringify(shape),
@@ -283,6 +158,9 @@ const SurveyForm = ({ onNavigate, participantId }) => {
       CaseDetails: '',
       QuestionID: filteredQuestions[currentQuestionIndex].QuestionID,
       FormID: filters.formId,
+      Organization: currentQuestion.Organization,
+      Program: currentQuestion.Program,
+ParticipantList: currentQuestion.ParticipantList,
       Index: currentQuestionIndex,
       ResponseID: uuidv4(),
       Response: answer,
@@ -301,19 +179,15 @@ const SurveyForm = ({ onNavigate, participantId }) => {
     if (currentQuestionIndex > 0) {
       const nextQuestionIndex = currentQuestionIndex - 1;
   
-      // Encuentra la respuesta de la pregunta actual que deseas eliminar
       const responseToDelete = responses.find(
         response => response.QuestionID === filteredQuestions[currentQuestionIndex - 1].QuestionID
       );
   
       if (responseToDelete) {
         try {
-          // Asegúrate de obtener la última revisión del documento
           const docToDelete = await localResponsesDB.get(responseToDelete._id);
           await localResponsesDB.remove(docToDelete);
           console.log(`Respuesta eliminada: ${docToDelete._id}`);
-  
-          // Actualiza el estado local de las respuestas
           setResponses(prevResponses =>
             prevResponses.filter(response => response._id !== docToDelete._id)
           );
@@ -324,10 +198,8 @@ const SurveyForm = ({ onNavigate, participantId }) => {
         console.log('No se encontró respuesta para eliminar.');
       }
   
-      // Retrocede a la pregunta anterior
       setCurrentQuestionIndex(nextQuestionIndex);
   
-      // Establece la respuesta para la nueva pregunta actual si existe
       const previousResponse = responses.find(
         response => response.QuestionID === filteredQuestions[nextQuestionIndex].QuestionID
       );
@@ -335,85 +207,65 @@ const SurveyForm = ({ onNavigate, participantId }) => {
     }
   };
 
-// Obtener la ubicación actual
-const getLocation = async () => {
-  return new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const location = {
-          coordinates: [position.coords.longitude, position.coords.latitude], // [longitude, latitude] para GeoJSON
-          type: 'Point'
-        };
-        resolve(JSON.stringify(location));
-      },
-      (error) => reject(error),
-      { timeout: 10000 }
-    );
-  });
-};
-
-// Ejemplo de uso
-getLocation()
-  .then((locationString) => {
-    console.log(locationString); // "{\"coordinates\":[-74.0515934851374,4.667035866476596],\"type\":\"Point\"}"
-  })
-  .catch((error) => {
-    console.error(error);
-  });
-
-
-const saveSurveyToFinalDB = async (caseID) => {
-  try {
-    // Obtener la ubicación actual
-    const location = await getLocation();
-
-    // Obtener todas las respuestas desde la base de datos local
-    const allResponses = await localResponsesDB.find({
-      selector: { CaseID: caseID }
+  const getLocation = async () => {
+    return new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = {
+            coordinates: [position.coords.longitude, position.coords.latitude],
+            type: 'Point'
+          };
+          resolve(JSON.stringify(location));
+        },
+        (error) => reject(error),
+        { timeout: 10000 }
+      );
     });
+  };
 
-    console.log('Respuestas obtenidas para guardar:', allResponses.docs);
+  const saveSurveyToFinalDB = async (caseID) => {
+    try {
+      const location = await getLocation();
 
-    // Crear el objeto de datos de la encuesta
-    const surveyData = {
-      _id: uuidv4(), // Generar un nuevo ID único
-      caseID: caseID,
-      formID: filters.formId,
-      timestamp: new Date().toISOString(),
-      location: location, // Agregar la ubicación formateada como GeoJSON
-      responses: allResponses.docs // Incluir las respuestas
-    };
+      const allResponses = await localResponsesDB.find({
+        selector: { CaseID: caseID }
+      });
 
-    // Guardar el objeto de encuesta en la base de datos final
-    await finalDB.put(surveyData);
-    console.log('Encuesta guardada en finalDB:', surveyData);
-  } catch (error) {
-    console.error('Error al guardar la encuesta en finalDB:', error);
-  }
-};
+      console.log('Respuestas obtenidas para guardar:', allResponses.docs);
 
-const handleSubmit = async () => {
-  // Mostrar mensaje de confirmación
-  const confirmed = window.confirm('¿Deseas enviar la encuesta?');
-  if (confirmed) {
-    console.log('Usuario confirmó el envío de la encuesta.');
-    
-    // Llamar a saveSurveyToFinalDB para guardar la encuesta
-    await saveSurveyToFinalDB(caseID);
+      const surveyData = {
+        _id: uuidv4(),
+        caseID: caseID,
+        formID: filters.formId,
+        Organization: currentQuestion.Organization,
+        Program: currentQuestion.Program,
+ParticipantList: currentQuestion.ParticipantList,
+        timestamp: new Date().toISOString(),
+        location: location,
+        responses: allResponses.docs
+      };
 
-    // Llamar a handleResetResponses para reiniciar las respuestas en PouchDB
-    await handleResetResponses();
-    
-    // Navegar a ParticipantList después del envío
-    console.log('Navegando a ParticipantList después del envío.');
-    onNavigate('ParticipantList');
-  } else {
-    console.log('Usuario canceló el envío de la encuesta.');
-  }
-};
+      await finalDB.put(surveyData);
+      console.log('Encuesta guardada en finalDB:', surveyData);
+    } catch (error) {
+      console.error('Error al guardar la encuesta en finalDB:', error);
+    }
+  };
 
+  const handleSubmit = async () => {
+    const confirmed = window.confirm('¿Deseas enviar la encuesta?');
+    if (confirmed) {
+      console.log('Usuario confirmó el envío de la encuesta.');
+      
+      await saveSurveyToFinalDB(caseID);
+      await handleResetResponses();
+      console.log('Navegando a ParticipantList después del envío.');
+      onNavigate('ParticipantList');
+    } else {
+      console.log('Usuario canceló el envío de la encuesta.');
+    }
+  };
 
-  // Guardar archivo en localResponsesDB y luego transferirlo a finalDB
   const handleFileChange = async (file) => {
     const fileUrl = URL.createObjectURL(file);
     setPreviewUrl(fileUrl);
@@ -425,30 +277,29 @@ const handleSubmit = async () => {
       ParentCaseID: caseID,
       CaseDetails: '',
       QuestionID: filteredQuestions[currentQuestionIndex].QuestionID,
+      Organization: currentQuestion.Organization,
+      Program: currentQuestion.Program,
+ParticipantList: currentQuestion.ParticipantList,
       Index: currentQuestionIndex,
       ResponseID: responseId,
       Response: '',
-      Url: fileUrl, // Esto es temporal
+      Url: fileUrl,
     };
   
     try {
-      // Guardar en localResponsesDB
-      await localResponsesDB.put(fileResponse); // Guardar respuesta sin el adjunto.
-      const doc = await localResponsesDB.get(responseId); // Obtener el documento para agregar el adjunto.
-      await localResponsesDB.putAttachment(doc._id, file.name, doc._rev, file, file.type); // Guardar el archivo como adjunto.
+      await localResponsesDB.put(fileResponse);
+      const doc = await localResponsesDB.get(responseId);
+      await localResponsesDB.putAttachment(doc._id, file.name, doc._rev, file, file.type);
+      await finalDB.put(fileResponse);
+      const finalDoc = await finalDB.get(responseId);
+      await finalDB.putAttachment(finalDoc._id, file.name, finalDoc._rev, file, file.type);
   
-      // Guardar en finalDB
-      await finalDB.put(fileResponse); // Guardar respuesta sin el adjunto.
-      const finalDoc = await finalDB.get(responseId); // Obtener el documento para agregar el adjunto.
-      await finalDB.putAttachment(finalDoc._id, file.name, finalDoc._rev, file, file.type); // Guardar el archivo como adjunto.
-  
-      setResponses([...responses, fileResponse]); // Actualizar el estado de las respuestas.
+      setResponses([...responses, fileResponse]);
       console.log('Archivo guardado:', fileResponse);
     } catch (error) {
       console.error("Error al guardar el archivo en PouchDB:", error);
     }
   };
-  
 
   const handleImageUpload = async (imageFile, previewDataUrl) => {
     const responseId = uuidv4();
@@ -459,6 +310,9 @@ const handleSubmit = async () => {
       ParentCaseID: caseID,
       CaseDetails: '',
       QuestionID: filteredQuestions[currentQuestionIndex].QuestionID,
+      Organization: currentQuestion.Organization,
+      Program: currentQuestion.Program,
+ParticipantList: currentQuestion.ParticipantList,
       Index: currentQuestionIndex,
       ResponseID: responseId,
       Response: '',
@@ -494,7 +348,7 @@ const handleSubmit = async () => {
   const swipeHandlers = useSwipeable({
     onSwipedLeft: () => {
       if (currentQuestionIndex === filteredQuestions.length - 1) {
-        handleSubmit(); // Llama a handleSubmit en la última pregunta
+        handleSubmit();
       } else {
         handleNext();
       }
@@ -704,7 +558,7 @@ const handleSubmit = async () => {
 const containerStyle = css`
   display: flex;
   flex-direction: column;
-  height: 73vh; /* Ajuste para descontar la altura del header y footer */
+  height: 73vh;
   width: 100%;
   padding: 2rem;
   font-family: Arial, sans-serif;
