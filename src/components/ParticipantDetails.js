@@ -25,53 +25,83 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
   const [caseNotesHistory, setCaseNotesHistory] = useState([]);
   const [formIds, setFormIds] = useState([]);
   const [attachments, setAttachments] = useState([]);
-  const [geometries, setGeometries] = useState([]);
-  const [selectedFormId, setSelectedFormId] = useState(''); // Estado para manejar el formulario seleccionado
-  const [formQuestions, setFormQuestions] = useState([]);
-
-  useEffect(() => {
-    const fetchFormIds = async () => {
-      try {
-        const allForms = await localSurveyDB.allDocs({ include_docs: true });
-        console.log('All forms:', allForms.rows);
-        const uniqueFormIds = [...new Set(allForms.rows.map(row => row.doc.FormID).filter(formId => formId && formId !== 'Registro'))];
-        console.log('Unique Form IDs:', uniqueFormIds);
-        setFormIds(uniqueFormIds);
-      } catch (error) {
-        console.error('Error fetching form IDs:', error);
-      }
-    };
-
-    fetchFormIds();
-  }, []);
+  const [geometries, setGeometries] = useState([]); // Estado para almacenar las geometrías
 
   useEffect(() => {
     const fetchParticipantData = async () => {
       try {
         setLoading(true);
-        console.log('Fetching participant data for FormID:', selectedFormId || 'Registro');
         const generalResult = await finalDB.find({
           selector: {
             caseID: participantId,
-            formID: selectedFormId || 'Registro'
+            formID: 'Registro'
           }
         });
-
-        console.log('General Result:', generalResult);
-
+  
         if (generalResult.docs.length > 0) {
           const participantData = {};
           const caseNotesList = [];
-          let photoUrl = '';
           const geoData = [];
-
-          generalResult.docs.forEach(doc => {
-            console.log('Document:', doc);
-            doc.responses.forEach(response => {
-              participantData[response.QuestionID] = response.Response;
-              if (response.QuestionID === 'Q05' && response.Url) {
-                photoUrl = response.Url;
+  
+          // Obtener QuestionText y ParticipantList desde localSurveyDB
+          const fetchQuestionDetails = async (questionID) => {
+            try {
+              const result = await localSurveyDB.find({
+                selector: { QuestionID: questionID }
+              });
+              if (result.docs.length > 0) {
+                const doc = result.docs[0];
+                return {
+                  QuestionText: doc.QuestionText,
+                  ParticipantList: doc.ParticipantList
+                };
+              } else {
+                return {
+                  QuestionText: questionID,
+                  ParticipantList: null
+                };
               }
+            } catch (error) {
+              console.error('Error fetching question details:', error);
+              return {
+                QuestionText: questionID,
+                ParticipantList: null
+              };
+            }
+          };
+  
+          // Ajustar el mapeo para incluir QuestionText y aplicar la lógica de la foto
+          await Promise.all(generalResult.docs.map(async (doc) => {
+            console.log('Document:', doc);
+  
+            await Promise.all(doc.responses.map(async (response) => {
+              const { QuestionText, ParticipantList } = await fetchQuestionDetails(response.QuestionID);
+  
+              // Verifica si el campo Url está presente para imágenes y si ParticipantList es 1
+              if (response.Url) {
+                if (ParticipantList === 1) {
+                  participantData.photo = response.Url;
+                } else {
+                  if (!participantData.fields) {
+                    participantData.fields = [];
+                  }
+                  participantData.fields.push({
+                    QuestionID: response.QuestionID,
+                    Response: response.Response,
+                    ParticipantList: ParticipantList,
+                    QuestionText: QuestionText // Añadir QuestionText aquí
+                  });
+                }
+              }
+  
+              // Añadir QuestionText a participantData
+              participantData[response.QuestionID] = {
+                QuestionText: QuestionText,
+                Response: response.Response,
+                ParticipantList: ParticipantList
+              };
+  
+              // Verifica si la respuesta contiene coordenadas
               if (response.Response && response.Response.includes('coordinates')) {
                 try {
                   const parsedResponse = JSON.parse(response.Response);
@@ -81,8 +111,9 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
                   console.error('Error parsing coordinates:', error);
                 }
               }
-            });
-
+            }));
+  
+            // Extraer coordenadas del campo 'location'
             if (doc.location) {
               try {
                 const parsedLocation = JSON.parse(doc.location);
@@ -92,36 +123,37 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
                 console.error('Error parsing location:', error);
               }
             }
-
+  
             if (doc.caseNotes) {
               caseNotesList.push(...doc.caseNotes.reverse());
             }
-          });
-
-          participantData.photo = photoUrl || '';
+          }));
+  
           participantData.caseID = participantId;
           setFormData(participantData);
           setCaseNotesHistory(caseNotesList);
           setExtraFields(generalResult.docs.flatMap(doc => doc.responses.filter(response => response.QuestionID.startsWith('extra'))));
-          setGeometries(geoData);
+          setGeometries(geoData); // Asigna las geometrías
         } else {
           throw new Error('No participant data found');
         }
-
+  
         setLoading(false);
       } catch (err) {
         setError(`Error fetching participant data from finalDB: ${err.message}`);
         setLoading(false);
       }
     };
-
+  
     if (participantId) {
       fetchParticipantData();
     } else {
       setLoading(false);
     }
-  }, [participantId, selectedFormId]);
-
+  }, [participantId]);
+  
+  
+  
   useEffect(() => {
     const fetchAttachments = async () => {
       try {
@@ -180,36 +212,13 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
     };
     updateParticipant(participantId, updatedData);
     setCaseNotes('');
-    setCaseNotesHistory([newCaseNote, ...caseNotesHistory]);
+    setCaseNotesHistory([newCaseNote, ...caseNotesHistory]); // Actualizar el historial inmediatamente
   };
 
   const handleDelete = (id) => {
     const updatedNotes = caseNotesHistory.filter(note => note.id !== id);
     setCaseNotesHistory(updatedNotes);
     updateParticipant(participantId, { ...formData, caseNotes: updatedNotes });
-  };
-
-  const handleFormSelect = async (event) => {
-    const selectedFormId = event.target.value;
-    setSelectedFormId(selectedFormId);
-    console.log('Selected FormID:', selectedFormId);
-
-    try {
-      const formResult = await localSurveyDB.find({
-        selector: {
-          FormID: selectedFormId
-        }
-      });
-      console.log('Form Result:', formResult.docs);
-      if (formResult.docs.length > 0) {
-        setFormQuestions(formResult.docs);
-      } else {
-        setFormQuestions([]);
-      }
-    } catch (err) {
-      console.error('Error fetching form questions:', err);
-      setFormQuestions([]);
-    }
   };
 
   if (loading) {
@@ -228,50 +237,50 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
             <Tooltip title="Biographic Data">
               <Tab
                 icon={<PersonIcon />}
-                sx={{
-                  minWidth: '0px',
+                sx={{ 
+                  minWidth: '0px', 
                   color: selectedTab === 0 ? 'grey' : 'white',
-                  '&.Mui-selected': { color: 'grey' },
+                  '&.Mui-selected': { color: 'grey' }, // Asegúrate de aplicar el color gris cuando está seleccionado
                 }}
               />
             </Tooltip>
             <Tooltip title="Case Notes">
               <Tab
                 icon={<NoteIcon />}
-                sx={{
-                  minWidth: '0px',
+                sx={{ 
+                  minWidth: '0px', 
                   color: selectedTab === 1 ? 'grey' : 'white',
-                  '&.Mui-selected': { color: 'grey' },
+                  '&.Mui-selected': { color: 'grey' }, // Asegúrate de aplicar el color gris cuando está seleccionado
                 }}
               />
             </Tooltip>
             <Tooltip title="Checklist">
               <Tab
                 icon={<CheckIcon />}
-                sx={{
-                  minWidth: '0px',
+                sx={{ 
+                  minWidth: '0px', 
                   color: selectedTab === 2 ? 'grey' : 'white',
-                  '&.Mui-selected': { color: 'grey' },
+                  '&.Mui-selected': { color: 'grey' }, // Asegúrate de aplicar el color gris cuando está seleccionado
                 }}
               />
             </Tooltip>
             <Tooltip title="Attachments">
               <Tab
                 icon={<AttachFileIcon />}
-                sx={{
-                  minWidth: '0px',
+                sx={{ 
+                  minWidth: '0px', 
                   color: selectedTab === 3 ? 'grey' : 'white',
-                  '&.Mui-selected': { color: 'grey' },
+                  '&.Mui-selected': { color: 'grey' }, // Asegúrate de aplicar el color gris cuando está seleccionado
                 }}
               />
             </Tooltip>
             <Tooltip title="Location Data">
               <Tab
                 icon={<LocationOnIcon />}
-                sx={{
-                  minWidth: '0px',
+                sx={{ 
+                  minWidth: '0px', 
                   color: selectedTab === 4 ? 'grey' : 'white',
-                  '&.Mui-selected': { color: 'grey' },
+                  '&.Mui-selected': { color: 'grey' }, // Asegúrate de aplicar el color gris cuando está seleccionado
                 }}
               />
             </Tooltip>
@@ -280,25 +289,7 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
       </Box>
       <Box css={styles.content}>
         <TabPanel value={selectedTab} index={0}>
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <TextField
-                select
-                label="Seleccionar Formulario"
-                value={selectedFormId}
-                onChange={handleFormSelect}
-                fullWidth
-                margin="normal"
-              >
-                {formIds.map(formId => (
-                  <MenuItem key={formId} value={formId}>
-                    {formId}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-          </Grid>
-          <BiographicTab formData={formData} handleChange={handleChange} extraFields={extraFields} formQuestions={formQuestions} />
+          <BiographicTab formData={formData} handleChange={handleChange} extraFields={extraFields} />
         </TabPanel>
         <TabPanel value={selectedTab} index={1}>
           <CaseNotesTab caseNotes={caseNotes} setCaseNotes={setCaseNotes} caseNotesHistory={caseNotesHistory} handleSave={handleSave} handleDelete={handleDelete} />
@@ -355,7 +346,7 @@ const TabPanel = (props) => {
   );
 };
 
-const BiographicTab = ({ formData, handleChange, extraFields, formQuestions }) => (
+const BiographicTab = ({ formData, handleChange, extraFields }) => (
   <Box>
     <Grid container spacing={2}>
       <Grid item xs={12} sm={4}>
@@ -374,20 +365,22 @@ const BiographicTab = ({ formData, handleChange, extraFields, formQuestions }) =
               value={formData.caseID || ''}
               fullWidth
               margin="normal"
-              disabled
+              disabled // Este campo no es editable
             />
           </Grid>
-          {formQuestions.map(({ QuestionID, QuestionText }) => (
-            <Grid item xs={12} sm={6} md={4} key={QuestionID}>
-              <TextField
-                label={QuestionText}
-                name={QuestionID}
-                value={formData[QuestionID] || ''}
-                onChange={handleChange}
-                fullWidth
-                margin="normal"
-              />
-            </Grid>
+          {Object.keys(formData).map((key) => (
+            key !== 'caseID' && key !== 'photo' && (
+              <Grid item xs={12} sm={6} md={4} key={key}>
+                <TextField
+                  label={formData[key].QuestionText || key}
+                  name={key}
+                  value={formData[key].Response || ''}
+                  onChange={handleChange}
+                  fullWidth
+                  margin="normal"
+                />
+              </Grid>
+            )
           ))}
           {extraFields.map(({ QuestionID, QuestionText }) => (
             <Grid item xs={12} sm={6} md={4} key={QuestionID}>
@@ -406,6 +399,7 @@ const BiographicTab = ({ formData, handleChange, extraFields, formQuestions }) =
     </Grid>
   </Box>
 );
+
 
 const CaseNotesTab = ({ caseNotes, setCaseNotes, caseNotesHistory, handleSave, handleDelete }) => (
   <Box>
@@ -584,7 +578,7 @@ const AttachmentsTab = ({ attachments }) => {
 
 const styles = {
   appBar: css`
-    && .MuiTab-root {
+    .MuiTab-root {
       min-width: 0px !important;
     }
   `,
