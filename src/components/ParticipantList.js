@@ -227,7 +227,7 @@ const participantListStyles = {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   `,
   cardContentStyle: css`
-    margin-top: 10px;
+    margin-top: 0px;
     display: flex;
     align-items: center;
     padding: 0px;
@@ -241,17 +241,18 @@ const participantListStyles = {
     justify-content: center;
   `,
   dividerStyle: css`
-    margin: 4px 0;
+    margin: 2px 0;
     border-color: rgb(59 59 59);
   `,
   fieldText: css`
-    margin-bottom: 5px;
+    margin-bottom: 0px;
+    font-size: 0.7rem !important;
   `,
   firstFieldText: css`
   font-weight: bold;
   font-size: 1.2em;
   color: #333;
-  margin-bottom: 5px;
+  margin-bottom: 2px;
 `,
 
 };

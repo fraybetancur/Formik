@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Box, Typography, Table, TableBody, TableCell, TableHead, TableRow, Card, CardContent } from '@mui/material';
 import { finalDB, QuestionContext } from './QuestionContext';
-import { css } from '@emotion/react';
+import { css, Global } from '@emotion/react';
 
 const LoanSummary = ({ participantId }) => {
   const [loanData, setLoanData] = useState(null);
@@ -102,59 +102,69 @@ const LoanSummary = ({ participantId }) => {
   const payment = calculatePayment(loanData.loanAmount, loanData.type);
 
   return (
-    <Box css={styles.container}>
-      <Card css={styles.card}>
-        <CardContent>
-          <Typography variant="h6" css={styles.cardTitle}>Loan Summary</Typography>
-          <Table>
-            <TableBody>
-              <TableRow>
-                <TableCell>Fecha</TableCell>
-                <TableCell>{loanData.date}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Prestamo</TableCell>
-                <TableCell>{`$ ${loanData.loanAmount.toFixed(2)}`}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Tipo</TableCell>
-                <TableCell>{loanData.type}</TableCell>
-              </TableRow>
-              {loanData.type && (
+    <>
+      <Global
+        styles={css`
+          .css-1ex1afd-MuiTableCell-root {
+            padding: 0px !important;
+          }
+        `}
+      />
+      {/* El resto del contenido del componente */}
+      <Box css={styles.container}>
+        <Card css={styles.card}>
+          <CardContent>
+            <Typography variant="h6" css={styles.cardTitle}>Loan Summary</Typography>
+            <Table>
+              <TableBody>
                 <TableRow>
-                  <TableCell>{`Pago ${loanData.type.toLowerCase()}`}</TableCell>
-                  <TableCell>{`$ ${payment.toFixed(2)}`}</TableCell>
+                  <TableCell>Fecha</TableCell>
+                  <TableCell>{loanData.date}</TableCell>
                 </TableRow>
-              )}
-              <TableRow>
-                <TableCell>Saldo</TableCell>
-                <TableCell>{`$ ${balance.toFixed(2)}`}</TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Typography variant="h6" css={styles.sectionTitle}>Seguimiento</Typography>
-      <Table css={styles.table}>
-        <TableHead>
-          <TableRow>
-            <TableCell>#</TableCell>
-            <TableCell>Fecha</TableCell>
-            <TableCell>Monto</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {followUpData.map((followUp, index) => (
-            <TableRow key={index}>
-              <TableCell>{index + 1}</TableCell>
-              <TableCell>{followUp.date}</TableCell>
-              <TableCell>{`$ ${followUp.amount.toFixed(2)}`}</TableCell>
+                <TableRow>
+                  <TableCell>Prestamo</TableCell>
+                  <TableCell>{`$ ${loanData.loanAmount.toFixed(2)}`}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Tipo</TableCell>
+                  <TableCell>{loanData.type}</TableCell>
+                </TableRow>
+                {loanData.type && (
+                  <TableRow>
+                    <TableCell>{`Pago ${loanData.type.toLowerCase()}`}</TableCell>
+                    <TableCell>{`$ ${payment.toFixed(2)}`}</TableCell>
+                  </TableRow>
+                )}
+                <TableRow>
+                  <TableCell>Saldo</TableCell>
+                  <TableCell>{`$ ${balance.toFixed(2)}`}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+  
+        <Typography variant="h6" css={styles.sectionTitle}>Seguimiento</Typography>
+        <Table css={styles.table}>
+          <TableHead>
+            <TableRow>
+              <TableCell>#</TableCell>
+              <TableCell>Fecha</TableCell>
+              <TableCell>Monto</TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Box>
+          </TableHead>
+          <TableBody>
+            {followUpData.map((followUp, index) => (
+              <TableRow key={index}>
+                <TableCell>{index + 1}</TableCell>
+                <TableCell>{followUp.date}</TableCell>
+                <TableCell>{`$ ${followUp.amount.toFixed(2)}`}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Box>
+    </>
   );
 };
 
@@ -175,9 +185,10 @@ const styles = {
   `,
   table: css`
     width: 100%;
+    padding: 0px !important;
     border-collapse: collapse;
     & th, & td {
-      padding: 8px;
+      padding: 0px !important;
       border: 1px solid #ddd;
     }
   `
