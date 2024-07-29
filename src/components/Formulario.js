@@ -258,7 +258,7 @@ ParticipantList: currentQuestion.ParticipantList,
     const confirmed = window.confirm('¿Deseas enviar la encuesta?');
     if (confirmed) {
       console.log('Usuario confirmó el envío de la encuesta.');
-      
+      await handleNext();
       await saveSurveyToFinalDB(caseID);
       await handleResetResponses();
       console.log('Navegando a ParticipantList después del envío.');

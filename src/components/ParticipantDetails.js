@@ -13,6 +13,7 @@ import { css } from '@emotion/react';
 import { v4 as uuidv4 } from 'uuid';
 import PDFViewer from './PDFViewer';
 import GeoMap from './Controls/GeoMap';
+import LoanSummary from './LoanSummary';
 
 const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
   const [selectedTab, setSelectedTab] = useState(0);
@@ -284,6 +285,16 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
                 }}
               />
             </Tooltip>
+            <Tooltip title="Loan Summary">
+              <Tab
+                icon={<NoteIcon />}
+                sx={{
+                  minWidth: '0px',
+                  color: selectedTab === 5 ? 'grey' : 'white',
+                  '&.Mui-selected': { color: 'grey' },
+                }}
+              />
+            </Tooltip>
           </Tabs>
         </AppBar>
       </Box>
@@ -302,6 +313,9 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
         </TabPanel>
         <TabPanel value={selectedTab} index={4}>
           <GeoMap geometries={geometries} onShapeComplete={(shape) => console.log(shape)} />
+        </TabPanel>
+        <TabPanel value={selectedTab} index={5}>
+          <LoanSummary participantId={participantId} />
         </TabPanel>
       </Box>
       <Box css={styles.footer}>
@@ -400,7 +414,6 @@ const BiographicTab = ({ formData, handleChange, extraFields }) => (
   </Box>
 );
 
-
 const CaseNotesTab = ({ caseNotes, setCaseNotes, caseNotesHistory, handleSave, handleDelete }) => (
   <Box>
     <TextField
@@ -462,7 +475,10 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
     const fetchFormIds = async () => {
       try {
         const allForms = await localSurveyDB.allDocs({ include_docs: true });
-        const uniqueFormIds = [...new Set(allForms.rows.map(row => row.doc.FormID).filter(formId => formId && formId !== 'Registro'))];
+        const uniqueFormIds = allForms.rows
+          .map(row => ({ formId: row.doc.FormID, multiple: row.doc.Multiple === 'true' }))
+          .filter((form, index, self) => form.formId && form.formId !== 'Registro' && self.findIndex(f => f.formId === form.formId) === index);
+
         setFormIds(uniqueFormIds);
       } catch (error) {
         console.error('Error fetching form IDs:', error);
@@ -498,6 +514,10 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
     }
   };
 
+  const getFormInstanceCount = (formId) => {
+    return followUpForms.filter(form => form.formID === formId).length;
+  };
+
   const isFormCompleted = (formId) => {
     return followUpForms.some(form => form.formID === formId);
   };
@@ -508,34 +528,50 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
         Follow-up Forms
       </Typography>
       <List>
-        {formIds.map((formId) => (
-          <Box key={formId}>
-            <ListItem>
-              <ListItemText primary={formId} />
-              <ListItemSecondaryAction>
-                {isFormCompleted(formId) ? (
-                  <IconButton edge="end" disabled>
-                    <CheckIcon color="action" />
-                  </IconButton>
-                ) : (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<AddIcon />}
-                    onClick={() => handleNavigateToForm(formId)}
-                  >
-                    Diligenciar
-                  </Button>
-                )}
-              </ListItemSecondaryAction>
-            </ListItem>
-            <Divider />
-          </Box>
-        ))}
+        {formIds.map(({ formId, multiple }, index) => {
+          const formCount = getFormInstanceCount(formId); // Llamar a la función para obtener el conteo
+
+          return (
+            <Box key={`${formId}-${index}`}>
+              <ListItem>
+                <ListItemText primary={`${formId}${multiple ? ` (${formCount})` : ''}`} /> {/* Mostrar el conteo si es múltiple */}
+                <ListItemSecondaryAction>
+                  {multiple ? (
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      startIcon={<AddIcon />}
+                      onClick={() => handleNavigateToForm(formId)}
+                    >
+                      Diligenciar
+                    </Button>
+                  ) : (
+                    isFormCompleted(formId) ? (
+                      <IconButton edge="end" disabled>
+                        <CheckIcon color="action" />
+                      </IconButton>
+                    ) : (
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<AddIcon />}
+                        onClick={() => handleAddFollowUpForm()}
+                      >
+                        Agregar
+                      </Button>
+                    )
+                  )}
+                </ListItemSecondaryAction>
+              </ListItem>
+              <Divider />
+            </Box>
+          );
+        })}
       </List>
     </Box>
   );
 };
+
 
 const AttachmentsTab = ({ attachments }) => {
   const [selectedAttachment, setSelectedAttachment] = useState(null);
