@@ -15,13 +15,14 @@ import PDFViewer from './PDFViewer';
 import GeoMap from './Controls/GeoMap';
 import LoanSummary from './LoanSummary';
 
-const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
+const ParticipantDetails = ({ participantId, onBack, onNavigate, Organization }) => {
+
   const [selectedTab, setSelectedTab] = useState(0);
   const [formData, setFormData] = useState({});
   const [extraFields, setExtraFields] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { updateParticipant } = useContext(QuestionContext);
+  const { updateParticipant, organizationId, programId } = useContext(QuestionContext);
   const [caseNotes, setCaseNotes] = useState('');
   const [caseNotesHistory, setCaseNotesHistory] = useState([]);
   const [formIds, setFormIds] = useState([]);
@@ -285,6 +286,7 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
                 }}
               />
             </Tooltip>
+            {organizationId === 'Inversiones El Paisa' && (
             <Tooltip title="Loan Summary">
               <Tab
                 icon={<NoteIcon />}
@@ -295,6 +297,7 @@ const ParticipantDetails = ({ participantId, onBack, onNavigate }) => {
                 }}
               />
             </Tooltip>
+          )}
           </Tabs>
         </AppBar>
       </Box>
@@ -555,9 +558,9 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
                         variant="contained"
                         color="primary"
                         startIcon={<AddIcon />}
-                        onClick={() => handleAddFollowUpForm()}
+                        onClick={() => handleNavigateToForm(formId)}
                       >
-                        Agregar
+                        Diligenciar
                       </Button>
                     )
                   )}
@@ -571,6 +574,7 @@ const FollowUpFormsTab = ({ participantId, onNavigate }) => {
     </Box>
   );
 };
+
 
 
 const AttachmentsTab = ({ attachments }) => {
@@ -614,7 +618,7 @@ const AttachmentsTab = ({ attachments }) => {
 
 const styles = {
   appBar: css`
-    .MuiTab-root {
+    && .MuiTab-root {
       min-width: 0px !important;
     }
   `,

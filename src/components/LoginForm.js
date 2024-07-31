@@ -64,30 +64,32 @@ const createIndexesAndFilters = async () => {
       }
     };
 
-    await putDesignDoc(remoteSurveyDB);
-    await putDesignDoc(remoteChoicesDB);
-    await putDesignDoc(remoteResponsesDB);
+    await Promise.all([
+      putDesignDoc(remoteSurveyDB),
+      putDesignDoc(remoteChoicesDB),
+      putDesignDoc(remoteResponsesDB),
+    ]);
 
     console.log('Índices y filtros creados en Cloudant.');
 
     console.log("Creando índices en PouchDB...");
-    await localSurveyDB.createIndex({
-      index: {
-        fields: ['Organization', 'Program']
-      }
-    });
-
-    await localChoicesDB.createIndex({
-      index: {
-        fields: ['QuestionID']
-      }
-    });
-
-    await localResponsesDB.createIndex({
-      index: {
-        fields: ['Organization', 'Program']
-      }
-    });
+    await Promise.all([
+      localSurveyDB.createIndex({
+        index: {
+          fields: ['Organization', 'Program']
+        }
+      }),
+      localChoicesDB.createIndex({
+        index: {
+          fields: ['QuestionID']
+        }
+      }),
+      localResponsesDB.createIndex({
+        index: {
+          fields: ['Organization', 'Program']
+        }
+      })
+    ]);
 
     console.log('Índices creados en PouchDB.');
   } catch (err) {
@@ -130,13 +132,13 @@ const LoginForm = ({ onLogin }) => {
         total_docs = info.update_seq;
       });
   
-      const retrySync = (retryCount) => {
+      const retrySync = (retryCount, delay = 2000) => {
         if (retryCount > 0) {
           setTimeout(() => {
             syncWithFilter(localDB, remoteDB, organizationId, programId, dbName)
               .then(resolve)
-              .catch(() => retrySync(retryCount - 1));
-          }, 2000);
+              .catch(() => retrySync(retryCount - 1, delay * 2));
+          }, delay);
         } else {
           reject(new Error(`Failed to replicate ${dbName} after multiple attempts`));
         }
@@ -150,8 +152,8 @@ const LoginForm = ({ onLogin }) => {
         },
         live: false,
         retry: false,
-        batch_size: 10, // Ajusta el tamaño de los lotes
-        batches_limit: 2, // Ajusta el límite de lotes
+        batch_size: 1500, // Ajusta el tamaño de los lotes
+        batches_limit: 1500, // Ajusta el límite de lotes
       }).on('change', info => {
         console.log(`Change detected in ${dbName}:`, info);
         docs_written = info.last_seq || docs_written;
@@ -200,6 +202,7 @@ const LoginForm = ({ onLogin }) => {
   
       console.log("Synchronization completed.");
       toast.success('Data successfully synchronized');
+      onLogin(organizationId, programId, userType); // Navegar automáticamente después de la sincronización
     } catch (err) {
       console.error("Error during synchronization:", err);
       setError(err.message);
@@ -215,7 +218,9 @@ const LoginForm = ({ onLogin }) => {
     const programId = e.target.program.value;
     setOrganizationId(organizationId);
     setProgramId(programId);
-  
+    
+    console.log("Organization in handleSubmit:", organizationId);
+
     if (navigator.onLine) {
       try {
         await syncDataWithParams(organizationId, programId);
@@ -233,6 +238,7 @@ const LoginForm = ({ onLogin }) => {
       } catch (err) {
         console.error('Error durante la sincronización en línea:', err);
         toast.error('Error durante la sincronización en línea. Trabajando sin conexión con datos locales.');
+        onLogin(organizationId, programId, userType); // Navegar automáticamente en caso de error
       }
     } else {
       console.warn('No hay conexión a Internet. Trabajando sin conexión con datos locales.');
@@ -269,7 +275,7 @@ const LoginForm = ({ onLogin }) => {
           <Label htmlFor="program">Programa:</Label>
           <Select id="program" name="program" required>
             <option value="PT">PT</option>
-            <option value="Préstamo">Préstamo</option>
+            <option value="Prestamo">Prestamo</option>
           </Select>
         </FormField>
         <FormField>

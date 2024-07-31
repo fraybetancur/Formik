@@ -6,17 +6,18 @@ import AddIcon from '@mui/icons-material/Add';
 import { finalDB, QuestionContext } from './QuestionContext';
 import { ParticipantDetails } from './ParticipantDetails';
 
-const ParticipantList = ({ onNavigate }) => {
+const ParticipantList = ({ onNavigate, Organization }) => {
   const [participants, setParticipants] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [selectedParticipantId, setSelectedParticipantId] = useState(null);
-  const { setFilters, shouldReloadParticipants, questions } = useContext(QuestionContext);
+  const { setFilters, shouldReloadParticipants, questions, organizationId } = useContext(QuestionContext);
   const { filters } = useContext(QuestionContext);
 
   useEffect(() => {
     setFilters({ formId: '', participantId: '' });
-  }, [setFilters]);
+    console.log("Organization in ParticipantList useEffect:", organizationId);
+  }, [setFilters, organizationId]);
 
   const fetchParticipants = async () => {
     try {
@@ -106,7 +107,7 @@ const ParticipantList = ({ onNavigate }) => {
   return (
     <Box css={participantListStyles.container}>
       {selectedParticipantId ? (
-        <ParticipantDetails participantId={selectedParticipantId} onBack={handleBack} />
+        <ParticipantDetails participantId={selectedParticipantId} onBack={handleBack} onNavigate={onNavigate} Organization={Organization}/>
       ) : (
         <>
           <Box css={participantListStyles.fixedTop}>
