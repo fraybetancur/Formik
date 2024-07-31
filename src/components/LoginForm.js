@@ -218,9 +218,7 @@ const LoginForm = ({ onLogin }) => {
     const programId = e.target.program.value;
     setOrganizationId(organizationId);
     setProgramId(programId);
-    
-    console.log("Organization in handleSubmit:", organizationId);
-
+  
     if (navigator.onLine) {
       try {
         await syncDataWithParams(organizationId, programId);

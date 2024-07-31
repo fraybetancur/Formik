@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import PouchDB from 'pouchdb-browser';
 import PouchDBFind from 'pouchdb-find';
 import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+// import 'react-toastify/dist/ReactToastify.css';
 import { localResponsesDB } from './Formulario';
 
 PouchDB.plugin(PouchDBFind);
@@ -64,10 +64,18 @@ export const QuestionProvider = ({ children }) => {
   // Definir el estado y la función setFilters
   const [filters, setFilters] = useState({
     formId: '',
-    organization: '',
-    program: ''
+    organization: organizationId, // Inicializar con organizationId
+    program: programId // Inicializar con programId
   });
   
+
+  useEffect(() => {
+    setFilters(prevFilters => ({
+      ...prevFilters,
+      organization: organizationId,
+      program: programId
+    }));
+  }, [organizationId, programId]);
 
   // Asegurarse de que login se llama correctamente desde el formulario de login
   
@@ -94,7 +102,12 @@ export const QuestionProvider = ({ children }) => {
   const syncWithRetry = async (db, remoteDb, retries = 5) => {
     for (let i = 0; i < retries; i++) {
       try {
-        await db.sync(remoteDb, { live: false, retry: true });
+        await db.replicate.from(remoteDb, {
+          filter: 'my_filter/by_organization_program',
+          query_params: { organizationId, programId },
+          live: false,
+          retry: true,
+        });
         console.log("Sincronización completada.");
         return;
       } catch (err) {
@@ -109,10 +122,10 @@ export const QuestionProvider = ({ children }) => {
     try {
       console.log("Iniciando sincronización...");
       setIsSyncing(true);
-      await syncWithRetry(localSurveyDB, remoteSurveyDB);
-      await syncWithRetry(localChoicesDB, remoteChoicesDB);
-      await syncWithRetry(finalDB, remoteResponsesDB); // Sincroniza finalDB con remoteResponsesDB
-      await syncWithRetry(localResponsesDB, remoteBackupDB);
+      await syncWithRetry(localSurveyDB, remoteSurveyDB, organizationId, programId);
+      await syncWithRetry(localChoicesDB, remoteChoicesDB, organizationId, programId);
+      await syncWithRetry(finalDB, remoteResponsesDB, organizationId, programId); // Sincroniza finalDB con remoteResponsesDB
+      await syncWithRetry(localResponsesDB, remoteBackupDB, organizationId, programId);
       await loadQuestions();
       setResponses([]);
       setCurrentQuestionIndex(0);

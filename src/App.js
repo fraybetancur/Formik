@@ -15,6 +15,8 @@ import LoginForm from './components/LoginForm';
 import CacheDownloader from './components/CacheDownloader';
 import ConditionManager from './components/ConditionManager';
 import ConditionEditor from './components/ConditionEditor';
+import { SyncProvider } from './components/SyncContext'; // Importar SyncProvider
+import SyncManager from './components/SyncManager';
 
 const MyEnhancedForm = lazy(() => import('./components/formik-demo'));
 const ExcelUploader = lazy(() => import('./components/ExcelUploader'));
@@ -163,9 +165,12 @@ const App = () => {
   };
 
   return (
-    <QuestionProvider>
-      <AppContent isLoggedIn={isLoggedIn} onLogin={handleLogin} /> {/* * Pasar isLoggedIn y handleLogin como props a AppContent */}
-    </QuestionProvider>
+    <SyncProvider> {/* Envolver en SyncProvider */}
+      <QuestionProvider> {/* Envolver en QuestionProvider */}
+        <AppContent isLoggedIn={isLoggedIn} onLogin={handleLogin} /> {/* Pasar isLoggedIn y handleLogin como props a AppContent */}
+        <SyncManager />
+      </QuestionProvider>
+    </SyncProvider>
   );
 };
 
