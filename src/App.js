@@ -10,6 +10,8 @@ import SubHeader from './components/SubHeader';
 import Formulario from './components/Formulario';
 import ParticipantList from './components/ParticipantList';
 import { ParticipantDetails } from './components/ParticipantDetails';
+import { IframeComponent } from './components/IframeComponent';
+import { PouchDBViewer } from './components/PouchDBViewer';
 import PDFUploader from './components/PDFUploader';
 import LoginForm from './components/LoginForm';
 import CacheDownloader from './components/CacheDownloader';
@@ -127,6 +129,10 @@ const AppContent = ({ isLoggedIn, onLogin }) => { // * Recibir isLoggedIn y onLo
       case 'ParticipantDetails':
         console.log('Rendering ParticipantDetails with onNavigate:', typeof handleNavigate); // Log para depuración
         return <ParticipantDetails participantId={currentComponent.participantId} onBack={handleBack} onNavigate={handleNavigate} />;
+      case 'IframeComponent':
+          return <IframeComponent onNavigate={handleNavigate} />;
+      case 'PouchDBViewer':
+          return <PouchDBViewer onNavigate={handleNavigate} />;
       case 'PDFUploader':
         return <PDFUploader onNavigate={handleNavigate} />;
       default:

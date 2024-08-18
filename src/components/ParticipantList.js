@@ -152,8 +152,8 @@ const ParticipantList = ({ onNavigate, Organization }) => {
             )}
           </Box>
           <Box css={participantListStyles.fixedBottom}>
-            <Button variant="contained" color="primary">Button 1</Button>
-            <Button variant="contained" color="primary">Button 2</Button>
+          <Button variant="contained" color="primary" onClick={() => onNavigate('IframeComponent')}> Button ja</Button>
+          <Button variant="contained" color="primary" onClick={() => onNavigate('PouchDBViewer')}>Ver Datos en PouchDB</Button>
           </Box>
         </>
       )}
