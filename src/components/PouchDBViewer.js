@@ -5,27 +5,30 @@ import { Box, List, ListItem, Typography } from '@mui/material';
 
 export const PouchDBViewer = () => {
   const [data, setData] = useState([]);
-  const db = new PouchDB('enketo_pouchdb');
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const db = new PouchDB('enketodb'); // Mover la creación de la instancia db dentro del useEffect
+
+    const fetchResponses = async () => {
       try {
-        const allDocs = await db.allDocs({ include_docs: true });
-        console.log('Documentos recuperados:', allDocs); // Añade logs para confirmar la recuperación
-        setData(allDocs.rows.map(row => row.doc)); // Almacena todos los documentos 1
-      } catch (error) {
-        console.error('Error al recuperar datos de PouchDB:', error);
+        const result = await db.allDocs({ include_docs: true });
+        setData(result.rows.map(row => row.doc));
+      } catch (err) {
+        setError('Error cargando los datos desde PouchDB');
+        console.error(err);
       }
     };
 
-    fetchData();
-  }, [db]);
+    fetchResponses();
+  }, []);
 
   return (
     <Box>
       <Typography variant="h6" gutterBottom>
         Datos almacenados en enketo_pouchdb
       </Typography>
+      {error && <Typography color="error">{error}</Typography>}
       <List>
         {data.length > 0 ? (
           data.map((doc, index) => (

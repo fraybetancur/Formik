@@ -164,6 +164,12 @@ const SideMenu = ({ isOpen, onClose, onNavigate }) => {
             </svg>
             ParticipantList
           </NavButton>
+          <NavButton onClick={() => onNavigate('PouchDBParticipantList')}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
+              <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z" />
+            </svg>
+            PouchDBParticipantList
+          </NavButton>
           <NavButton onClick={() => onNavigate('PDFUploader')}>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
               <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z" />

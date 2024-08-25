@@ -1,3 +1,4 @@
+//  cambiar para enketo db
 /** @jsxImportSource @emotion/react */
 import React, { useState, useEffect, useContext } from 'react';
 import { AppBar, Tabs, Tab, Box, Grid, TextField, Avatar, Button, MenuItem, Typography, IconButton, Divider, List, ListItem, ListItemText, ListItemSecondaryAction, Tooltip } from '@mui/material';
@@ -12,7 +13,7 @@ import { finalDB, QuestionContext, localSurveyDB } from './QuestionContext';
 import { css } from '@emotion/react';
 import { v4 as uuidv4 } from 'uuid';
 import PDFViewer from './PDFViewer';
-import GeoMap from './Controls/GeoMap';
+import GeoMap from './Controls/GeoMap'; 
 import LoanSummary from './LoanSummary';
 
 const ParticipantDetails = ({ participantId, onBack, onNavigate, Organization }) => {

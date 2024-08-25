@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { Global, css } from '@emotion/react';
-import React, { useState, useEffect, Suspense, lazy, useContext } from 'react';
+import React, { useState, Suspense, lazy, useContext } from 'react';
 import SideMenu from './components/SideMenu';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -17,8 +17,11 @@ import LoginForm from './components/LoginForm';
 import CacheDownloader from './components/CacheDownloader';
 import ConditionManager from './components/ConditionManager';
 import ConditionEditor from './components/ConditionEditor';
-import { SyncProvider } from './components/SyncContext'; // Importar SyncProvider
+import { SyncProvider } from './components/SyncContext'; 
 import SyncManager from './components/SyncManager';
+import GenerateRealisticMockData from './components/GenerateRealisticMockData'; 
+import PouchDBParticipantList from './components/PouchDBParticipantList';
+import PouchDBParticipantDetails from './components/PouchDBParticipantDetails'; // Importa el nuevo componente
 
 const MyEnhancedForm = lazy(() => import('./components/formik-demo'));
 const ExcelUploader = lazy(() => import('./components/ExcelUploader'));
@@ -63,10 +66,10 @@ const mainContentStyles = css`
   }
 `;
 
-const AppContent = ({ isLoggedIn, onLogin }) => { // * Recibir isLoggedIn y onLogin como props.
+const AppContent = ({ isLoggedIn, onLogin }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSubHeaderVisible, setIsSubHeaderVisible] = useState(false);
-  const { currentComponent, setCurrentComponent, setCurrentQuestionIndex, setFilters } = useContext(QuestionContext);
+  const { currentComponent, setCurrentComponent, setCurrentQuestionIndex } = useContext(QuestionContext);
 
   const handleMenuToggle = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -88,7 +91,7 @@ const AppContent = ({ isLoggedIn, onLogin }) => { // * Recibir isLoggedIn y onLo
   };
 
   const handleNavigate = (component, participantId = null) => {
-    console.log('handleNavigate called with component:', component, 'and participantId:', participantId); // Log para depuración
+    console.log('handleNavigate called with component:', component, 'and participantId:', participantId);
     if (component === 'Formulario') {
       setCurrentQuestionIndex(0);
     }
@@ -97,12 +100,12 @@ const AppContent = ({ isLoggedIn, onLogin }) => { // * Recibir isLoggedIn y onLo
   };
 
   const handleBack = () => {
-    console.log('handleBack called'); // Log para depuración
+    console.log('handleBack called');
     setCurrentComponent({ component: 'ParticipantList' });
   };
 
   const renderComponent = () => {
-    if (!isLoggedIn) { // * Mostrar LoginForm si el usuario no está autenticado.
+    if (!isLoggedIn) {
       return <LoginForm onLogin={onLogin} />;
     }
     switch (currentComponent.component) {
@@ -127,12 +130,16 @@ const AppContent = ({ isLoggedIn, onLogin }) => { // * Recibir isLoggedIn y onLo
       case 'ParticipantList':
         return <ParticipantList onNavigate={handleNavigate} />;
       case 'ParticipantDetails':
-        console.log('Rendering ParticipantDetails with onNavigate:', typeof handleNavigate); // Log para depuración
+        console.log('Rendering ParticipantDetails with onNavigate:', typeof handleNavigate);
         return <ParticipantDetails participantId={currentComponent.participantId} onBack={handleBack} onNavigate={handleNavigate} />;
       case 'IframeComponent':
           return <IframeComponent onNavigate={handleNavigate} />;
       case 'PouchDBViewer':
           return <PouchDBViewer onNavigate={handleNavigate} />;
+      case 'PouchDBParticipantList':
+          return <PouchDBParticipantList onNavigate={handleNavigate} />;
+      case 'PouchDBParticipantDetails': // Caso para el nuevo componente
+          return <PouchDBParticipantDetails participantId={currentComponent.participantId} onBack={handleBack} />;
       case 'PDFUploader':
         return <PDFUploader onNavigate={handleNavigate} />;
       default:
@@ -152,28 +159,28 @@ const AppContent = ({ isLoggedIn, onLogin }) => { // * Recibir isLoggedIn y onLo
         {isSubHeaderVisible && <SubHeader onReloadClick={handleReloadClick} />}
         <SideMenu isOpen={isMenuOpen} onClose={handleMenuToggle} onNavigate={handleNavigate} />
         <main css={mainContentStyles}>
+          <GenerateRealisticMockData /> {/* Genera datos simulados cada vez que se renderiza el componente */}
           <Suspense fallback={<div>Cargando...</div>}>
             {renderComponent()}
           </Suspense>
         </main>
-        {/* <Footer /> */}
       </div>
     </>
   );
 };
 
 const App = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // * Definir el estado de autenticación en el nivel superior.
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  const handleLogin = (organizationId, programId, userType) => { // * Definir la función handleLogin para manejar la autenticación.
+  const handleLogin = (organizationId, programId, userType) => {
     setIsLoggedIn(true);
     console.log(`Logged in with Organization: ${organizationId}, Program: ${programId}, User Type: ${userType}`);
   };
 
   return (
-    <SyncProvider> {/* Envolver en SyncProvider */}
-      <QuestionProvider> {/* Envolver en QuestionProvider */}
-        <AppContent isLoggedIn={isLoggedIn} onLogin={handleLogin} /> {/* Pasar isLoggedIn y handleLogin como props a AppContent */}
+    <SyncProvider>
+      <QuestionProvider>
+        <AppContent isLoggedIn={isLoggedIn} onLogin={handleLogin} />
         <SyncManager />
       </QuestionProvider>
     </SyncProvider>
