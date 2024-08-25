@@ -31,7 +31,25 @@ const PouchDBParticipantList = ({ onNavigate }) => {
       try {
         setLoading(true);
         const allDocs = await db.allDocs({ include_docs: true });
-        setParticipants(allDocs.rows.map(row => row.doc));
+        const participantData = allDocs.rows.map(row => {
+          const doc = row.doc;
+          const jsonDataKey = Object.keys(doc.jsonData)[0]; 
+          const jsonData = doc.jsonData[jsonDataKey];
+
+          // Extraer el nombre del archivo de imagen (avatar)
+          const avatarFileName = jsonData?.image?.['#text'];
+          let avatarUrl = null;
+
+          if (avatarFileName && Array.isArray(doc.files)) {
+            const avatarBlob = doc.files.find(file => file.name === avatarFileName);
+            if (avatarBlob instanceof Blob) {
+              avatarUrl = URL.createObjectURL(avatarBlob);
+            }
+          }
+
+          return { ...doc, jsonData, avatarUrl }; 
+        });
+        setParticipants(participantData);
       } catch (err) {
         console.error('Error al obtener participantes de PouchDB:', err);
       } finally {
@@ -50,7 +68,7 @@ const PouchDBParticipantList = ({ onNavigate }) => {
 
   // Manejar la selección de un participante
   const handleSelectParticipant = (participant) => {
-    onNavigate('PouchDBParticipantDetails', participant._id); // Asegurándote de pasar el _id real
+    onNavigate('PouchDBParticipantDetails', participant._id);
   };
 
   // Manejar la navegación al formulario de agregar participante
@@ -58,26 +76,59 @@ const PouchDBParticipantList = ({ onNavigate }) => {
     onNavigate('Formulario');
   };
 
-  // Renderizar los campos del participante en la lista
-  const renderParticipantFields = (participant) => (
-    <div>
-      <Typography variant="h6" css={participantListStyles.firstFieldText}>
-        {participant.jsonData?.Demographic?.Apellidos || 'Sin apellidos'}, {participant.jsonData?.Demographic?.Nombres || 'Sin nombres'}
-      </Typography>
-      <Divider css={participantListStyles.dividerStyle} />
-      <Typography variant="body2" css={participantListStyles.fieldText}>
-        Teléfono: {participant.jsonData?.tel || 'No disponible'}
-      </Typography>
-      <Divider css={participantListStyles.dividerStyle} />
-      <Typography variant="body2" css={participantListStyles.fieldText}>
-        Identificación: {participant.jsonData?.id || 'No disponible'}
-      </Typography>
-      <Divider css={participantListStyles.dividerStyle} />
-      <Typography variant="body2" css={participantListStyles.fieldText}>
-        Fecha: {participant.jsonData?.end || 'No disponible'}
-      </Typography>
-    </div>
-  );
+  /**
+   * Función que extrae los campos de jsonData que contienen la clave "@_hxl".
+   * La función es recursiva para asegurar que se capturen los campos dentro de
+   * cualquier estructura anidada.
+   */
+  const getFieldsWithHXL = (data, fields = []) => {
+    for (let key in data) {
+      if (typeof data[key] === 'object' && !Array.isArray(data[key])) {
+        // Verificar si el objeto contiene las claves "@_hxl" y "#text"
+        if ('@_hxl' in data[key] && '#text' in data[key]) {
+          fields.push({ label: key, value: data[key]['#text'], hxl: data[key]['@_hxl'] });
+        } else {
+          // Llamada recursiva si el campo es un objeto pero no tiene "@_hxl"
+          getFieldsWithHXL(data[key], fields);
+        }
+      }
+    }
+    return fields;
+  };
+
+  /**
+   * Función para renderizar los campos del participante.
+   * Se limitan los campos a los primeros 4 con base en la numeración de "@_hxl".
+   */
+  const renderParticipantFields = (participant) => {
+    let fields = getFieldsWithHXL(participant.jsonData);
+    // Ordenar los campos según el valor de hxl (sin el carácter #)
+    fields = fields
+      .filter(field => !isNaN(field.hxl)) // Asegurar que hxl sea un número
+      .sort((a, b) => parseInt(a.hxl) - parseInt(b.hxl))
+      .slice(0, 6); // Limitar a los primeros 4 campos
+
+    return (
+      <div>
+        {fields.map((field, index) => (
+          <div key={index}>
+            {index === 0 ? (
+              // El primer campo se muestra en negrita y más grande
+              <Typography variant="h6" css={participantListStyles.firstFieldText}>
+                {field.value || 'No disponible'}
+              </Typography>
+            ) : (
+              // Los demás campos se muestran en tamaño más pequeño
+              <Typography variant="body2" css={participantListStyles.fieldText}>
+                <strong>{field.label}:</strong> {field.value || 'No disponible'}
+              </Typography>
+            )}
+            {index < fields.length - 1 && <Divider css={participantListStyles.dividerStyle} />}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <Box css={participantListStyles.container}>
@@ -116,7 +167,7 @@ const PouchDBParticipantList = ({ onNavigate }) => {
                   <CardContent css={participantListStyles.cardContentStyle}>
                     <ListItem button onClick={() => handleSelectParticipant(participant)}>
                       <div css={participantListStyles.avatarContainerStyle}>
-                        <Avatar css={participantListStyles.avatarStyle} />
+                        <Avatar css={participantListStyles.avatarStyle} src={participant.avatarUrl} />
                       </div>
                       <div css={participantListStyles.infoStyle}>
                         {renderParticipantFields(participant)}
